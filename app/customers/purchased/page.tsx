@@ -100,7 +100,7 @@ export default function PurchasedCustomersPage() {
                   <Badge value={c.opportunityLevel} small />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/company/${c.id}`} className="text-iks-navy text-xs font-medium border border-iks-navy/30 rounded-lg px-3 py-1.5 hover:bg-iks-navy hover:text-white transition-colors">
+                  <Link href={`/company/${c.id}?tab=profile`} className="text-iks-navy text-xs font-medium border border-iks-navy/30 rounded-lg px-3 py-1.5 hover:bg-iks-navy hover:text-white transition-colors">
                     ดูรายละเอียด
                   </Link>
                 </td>
