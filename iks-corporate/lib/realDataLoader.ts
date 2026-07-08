@@ -1,7 +1,7 @@
-// ข้อมูลจริงจาก Excel Import
-// โหลดแบบ static import เพื่อให้ทำงานได้ใน Next.js
-
-import rawData from "./data/real_data.json";
+// โหลดข้อมูลจริงจาก Excel — แยกเป็น 3 ไฟล์เพื่อลด memory ตอน Vercel build
+import companiesRaw from "./data/companies.json";
+import vehiclesRaw from "./data/vehicles.json";
+import serviceRecordsRaw from "./data/serviceRecords.json";
 
 export interface RealCompany {
   id: string; name: string; taxId: string;
@@ -31,11 +31,10 @@ export interface RealServiceRecord {
   notes: string;
 }
 
-export const realCompanies: RealCompany[] = rawData.companies as RealCompany[];
-export const realVehicles: RealVehicle[] = rawData.vehicles as RealVehicle[];
-export const realServiceRecords: RealServiceRecord[] = rawData.serviceRecords as RealServiceRecord[];
+export const realCompanies = companiesRaw as RealCompany[];
+export const realVehicles = vehiclesRaw as RealVehicle[];
+export const realServiceRecords = serviceRecordsRaw as RealServiceRecord[];
 
-// Helpers
 export const getRealCompanyById = (id: string) => realCompanies.find(c => c.id === id);
 export const getRealVehicleById = (id: string) => realVehicles.find(v => v.id === id);
 export const getRealCompanyVehicles = (companyId: string) => realVehicles.filter(v => v.companyId === companyId);
