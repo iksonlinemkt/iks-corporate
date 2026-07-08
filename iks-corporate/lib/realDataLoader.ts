@@ -1,7 +1,7 @@
 // ข้อมูลจริงจาก Excel Import
 // โหลดแบบ static import เพื่อให้ทำงานได้ใน Next.js
 
-import rawData from "../public/real_data.json";
+import rawData from "./data/real_data.json";
 
 export interface RealCompany {
   id: string; name: string; taxId: string;
