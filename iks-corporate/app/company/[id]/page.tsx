@@ -1,5 +1,3 @@
-// Server Component — อ่าน params และ searchParams ฝั่ง server
-// ไม่ต้องใช้ useParams/useSearchParams/Suspense
 import { notFound } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -21,7 +19,7 @@ export default function CompanyDetailPage({
 
   const vehicles = getRealCompanyVehicles(params.id);
   const services = getRealCompanyServiceRecords(params.id);
-  const summary = realCompanySummary(params.id);
+  const summary  = realCompanySummary(params.id);
 
   return (
     <AppShell>
