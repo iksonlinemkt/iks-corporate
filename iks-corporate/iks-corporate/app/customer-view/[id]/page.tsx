@@ -149,7 +149,7 @@ export default function CustomerViewPage() {
           {/* Promotion */}
           <div className="bg-iks-copperLight/40 border border-iks-copper/30 rounded-xl p-5">
             <h3 className="font-semibold text-iks-copperDark text-sm mb-1">โปรโมชั่น / สิทธิพิเศษ</h3>
-            <p className="text-sm text-gray-700">ส่วนลดค่าอะไหล่ 10% สำหรับการเปลี่ยนถ่ายน้ำมันเครื่อง วันนี้ถึงสิ้นเดือน</p>
+            <p className="text-sm text-gray-400 italic">ยังไม่มีโปรโมชั่นในขณะนี้</p>
           </div>
         </div>
       </div>
