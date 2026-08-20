@@ -141,7 +141,7 @@ export default function CustomerViewPage() {
               </div>
               <div>
                 <div className="font-medium text-gray-800 text-sm">{company.salesOwner}</div>
-                <div className="text-xs text-gray-400">Sales Executive · {company.branch}</div>
+                <div className="text-xs text-gray-400">{typeof window !== "undefined" ? sessionStorage.getItem("iks_user_role") || "Sales" : "Sales"} · {company.branch}</div>
               </div>
             </div>
           </div>

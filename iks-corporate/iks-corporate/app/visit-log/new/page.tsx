@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import Breadcrumb from "@/components/Breadcrumb";
 import { realCompanies, getRealCompanyById, realCompanySummary, formatBahtReal } from "@/lib/realDataLoader";
-const currentUser = { name: "วรทัศน์ สุวรรณกุล", role: "Sales" };
+// currentUser จะโหลดจาก sessionStorage ที่ Login set ไว้
 import { Truck, Gauge, Calendar, Star, Paperclip, X } from "lucide-react";
 
 export default function CreateVisitLogPage() {
@@ -78,8 +78,8 @@ function CreateVisitLogForm() {
               <input type="time" className="form-input" required />
             </FormField>
             <FormField label="ผู้เข้าเยี่ยม" required>
-              <select className="form-input" defaultValue={"วรทัศน์ สุวรรณกุล"} required>
-                <option>{"วรทัศน์ สุวรรณกุล"}</option>
+              <select className="form-input" defaultValue={typeof window !== "undefined" ? sessionStorage.getItem("iks_user_name") || "-" : "-"} required>
+                <option value="">{typeof window !== "undefined" ? sessionStorage.getItem("iks_user_name") || "ผู้ใช้งาน" : "ผู้ใช้งาน"}</option>
               </select>
             </FormField>
           </div>
@@ -169,8 +169,8 @@ function CreateVisitLogForm() {
               <input type="text" placeholder="เช่น จัดทำใบเสนอราคา" className="form-input" required />
             </FormField>
             <FormField label="ผู้รับผิดชอบ" required>
-              <select className="form-input" defaultValue={"วรทัศน์ สุวรรณกุล"} required>
-                <option>{"วรทัศน์ สุวรรณกุล"}</option>
+              <select className="form-input" defaultValue={typeof window !== "undefined" ? sessionStorage.getItem("iks_user_name") || "-" : "-"} required>
+                <option value="">{typeof window !== "undefined" ? sessionStorage.getItem("iks_user_name") || "ผู้ใช้งาน" : "ผู้ใช้งาน"}</option>
               </select>
             </FormField>
             <FormField label="วันติดตามครั้งถัดไป" required>
