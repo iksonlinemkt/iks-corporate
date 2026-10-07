@@ -1,31 +1,34 @@
-"use client";
-
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Breadcrumb from "@/components/Breadcrumb";
 import StatCard from "@/components/StatCard";
 import {
-  getRealVehicleById, getRealCompanyById, getRealVehicleServiceRecords,
-  realVehicleSummary, formatBahtReal,
-} from "@/lib/realDataLoader";
+  getVehicleById, getCompanyById, getVehicleServiceRecords, getVehicleSummary,
+} from "@/lib/dataService";
+import { formatBahtReal } from "@/lib/realDataLoader";
 import { Wrench, Calendar, Coins, Gauge, Hash, Truck } from "lucide-react";
 
 const OWN_LABEL: Record<string,string> = {
   IKS_PURCHASE:"ซื้อกับ IKS", NON_IKS_PURCHASE:"ซื้อที่อื่น", UNKNOWN:"ไม่ทราบ",
 };
 
-export default function VehicleDetailPage() {
-  const params  = useParams<{ id: string; vehicleId: string }>();
-  const vehicle = getRealVehicleById(params.vehicleId);
-  const company = getRealCompanyById(params.id);
+export default async function VehicleDetailPage({
+  params,
+}: {
+  params: { id: string; vehicleId: string };
+}) {
+  const [vehicle, company] = await Promise.all([
+    getVehicleById(params.vehicleId),
+    getCompanyById(params.id),
+  ]);
 
-  if (!vehicle || !company) {
-    return <AppShell><p className="text-gray-500">ไม่พบข้อมูลรถ</p></AppShell>;
-  }
+  if (!vehicle || !company) notFound();
 
-  const records = getRealVehicleServiceRecords(vehicle.id);
-  const summary = realVehicleSummary(vehicle.id);
+  const [records, summary] = await Promise.all([
+    getVehicleServiceRecords(vehicle.id),
+    getVehicleSummary(vehicle.id),
+  ]);
 
   return (
     <AppShell>
@@ -57,8 +60,7 @@ export default function VehicleDetailPage() {
                 {vehicle.chassisNumber && <span className="flex items-center gap-1"><Hash size={12}/> แชสซี {vehicle.chassisNumber}</span>}
               </div>
               <div className="flex gap-4 mt-1 text-xs text-gray-500">
-                {vehicle.vehicleYear > 0 && <span>ปีรถ {vehicle.vehicleYear}</span>}
-                {vehicle.purchaseYear > 0 && <span>ปีที่ซื้อ {vehicle.purchaseYear}</span>}
+                {vehicle.purchaseYear && vehicle.purchaseYear > 0 && <span>ปีที่ซื้อ {vehicle.purchaseYear}</span>}
                 <span>กลุ่มรถ: {vehicle.vehicleGroup}{vehicle.vehicleSubtype !== "-" && ` (${vehicle.vehicleSubtype})`}</span>
               </div>
             </div>
@@ -74,7 +76,7 @@ export default function VehicleDetailPage() {
                   ? "bg-green-50 text-green-700 border-green-200"
                   : "bg-gray-100 text-gray-500 border-gray-200"
               }`}>
-                {OWN_LABEL[vehicle.ownershipStatus]}
+                {OWN_LABEL[vehicle.ownershipStatus] || vehicle.ownershipStatus}
               </span>
             </div>
           </div>
