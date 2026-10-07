@@ -13,6 +13,7 @@ import {
   ClipboardList,
   BarChart3,
   Settings,
+  Upload,
 } from "lucide-react";
 import Whale from "./Whale";
 
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/visit-log", label: "การเข้าเยี่ยม", icon: Users },
   { href: "/follow-up", label: "งานติดตาม", icon: ClipboardList },
   { href: "/reports", label: "รายงาน", icon: BarChart3 },
+  { href: "/import", label: "นำเข้าข้อมูล", icon: Upload },
   { href: "/settings", label: "ตั้งค่า", icon: Settings },
 ];
 
