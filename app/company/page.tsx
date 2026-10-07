@@ -1,16 +1,26 @@
-// Server Component — โหลด JSON ฝั่ง server ไม่เข้า client bundle
+// Async Server Component — fetches data from MySQL
 import AppShell from "@/components/AppShell";
 import Breadcrumb from "@/components/Breadcrumb";
-import { realCompanies, realCompanySummary, formatBahtReal } from "@/lib/realDataLoader";
+import { getCompanies, getAllCompaniesSummaryMap } from "@/lib/dataService";
 import CompanyListClient from "./CompanyListClient";
 
-export default function CompanyPage() {
-  // เตรียมข้อมูลทั้งหมดฝั่ง server ก่อนส่งให้ client
-  const rows = realCompanies.map(c => ({
+export default async function CompanyPage() {
+  const [allCompanies, summaryMap] = await Promise.all([
+    getCompanies(),
+    getAllCompaniesSummaryMap(),
+  ]);
+
+  const rows = allCompanies.map(c => ({
     ...c,
-    summary: realCompanySummary(c.id),
+    summary: summaryMap[c.id] || {
+      totalVehicles: 0, iksVehicles: 0, nonIksVehicles: 0,
+      vehiclesServiced: 0, totalServiceCount: 0, totalServiceCost: 0,
+      tyreCount: 0, batteryCount: 0, ispCount: 0,
+      noTyreCount: 0, noBatteryCount: 0, noISPCount: 0,
+    },
   }));
-  const branches = [...new Set(realCompanies.map(c => c.branch).filter(Boolean))].sort();
+
+  const branches = [...new Set(allCompanies.map(c => c.branch).filter(Boolean))].sort();
 
   return (
     <AppShell>
