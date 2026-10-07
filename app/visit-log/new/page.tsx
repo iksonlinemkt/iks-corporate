@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Async Server Component — fetches data from MySQL
 import { Suspense } from "react";
 import AppShell from "@/components/AppShell";
