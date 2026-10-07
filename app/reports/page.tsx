@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import AppShell from "@/components/AppShell";
 import Breadcrumb from "@/components/Breadcrumb";
 import Whale from "@/components/Whale";
