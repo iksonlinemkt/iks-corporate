@@ -54,6 +54,8 @@ writeFileSync(`${OUT}/index.txt`, index.join('\n') + '\n');
 console.log(`✔ เก็บแล้ว ${index.length} ไฟล์`);
 NODE_EOF
 rm -rf "$OUT"; mkdir -p "$OUT"
-docker run --rm --ipc=host -v "$W":/work -v "$OUT":/out -w /work "$IMG" node dump.mjs /out
+# เบราว์เซอร์เก็บไว้ใน $W/.browsers (ดาวน์โหลดครั้งแรกครั้งเดียว) แล้วรันภายในคอนเทนเนอร์
+docker run --rm --ipc=host -e PLAYWRIGHT_BROWSERS_PATH=/work/.browsers -v "$W":/work -v "$OUT":/out -w /work "$IMG" \
+  sh -c 'node node_modules/playwright/cli.js install chromium-headless-shell >/dev/null 2>&1 || node node_modules/playwright/cli.js install chromium; node dump.mjs /out'
 chmod -R a+rX "$OUT"
 echo; echo "✔ เสร็จ — ส่งข้อความนี้กลับมาได้เลย: dump พร้อมแล้ว"
