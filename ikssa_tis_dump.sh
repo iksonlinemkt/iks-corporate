@@ -4,12 +4,14 @@ if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then echo "กรุณารันด�
 set -euo pipefail
 W=/root/iks-web/tis-scraper; OUT=/var/www/ikssa-media/_tis
 mkdir -p "$W" && cd "$W"
+# Ubuntu 26.04 ยังไม่รองรับ Chromium ของ Playwright โดยตรง → รันใน Docker image ทางการของ Playwright
 if [ ! -d node_modules/playwright ]; then
-  echo "▶ ติดตั้งตัวช่วยเปิดเว็บ (ครั้งแรก ~3-5 นาที)…"
   [ -f package.json ] || npm init -y >/dev/null
   npm i --no-audit --no-fund --loglevel=error playwright@1.56.1
-  npx playwright install --with-deps chromium >/dev/null
 fi
+IMG=mcr.microsoft.com/playwright:v1.56.1-noble
+echo "▶ เตรียมเบราว์เซอร์ (ครั้งแรกดาวน์โหลด ~2 GB, 3-8 นาที)…"
+docker pull -q "$IMG" >/dev/null
 cat > dump.mjs <<'NODE_EOF'
 // เปิดหน้าเว็บ isuzu-tis.com ด้วย Chromium แล้วเก็บข้อมูลรุ่น/ราคา/สเปก (JSON ที่หน้าเว็บโหลด + ข้อความบนหน้า)
 import { chromium } from 'playwright';
@@ -51,6 +53,7 @@ await browser.close();
 writeFileSync(`${OUT}/index.txt`, index.join('\n') + '\n');
 console.log(`✔ เก็บแล้ว ${index.length} ไฟล์`);
 NODE_EOF
-rm -rf "$OUT"; node dump.mjs "$OUT"
+rm -rf "$OUT"; mkdir -p "$OUT"
+docker run --rm --ipc=host -v "$W":/work -v "$OUT":/out -w /work "$IMG" node dump.mjs /out
 chmod -R a+rX "$OUT"
 echo; echo "✔ เสร็จ — ส่งข้อความนี้กลับมาได้เลย: dump พร้อมแล้ว"
