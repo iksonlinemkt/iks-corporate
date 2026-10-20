@@ -34,8 +34,7 @@ const probe = await page.evaluate(() => {
   const slugs = [...new Set(pool.match(/[a-z0-9]+(?:-[a-z0-9]+)*-(?:mt|at|ddi)[a-z0-9-]*_[a-z0-9]+(?:-[a-z0-9]+)*/g) ?? [])];
   return { selects: document.querySelectorAll('select').length, opts, slugs, rscLen: rsc.length };
 });
-let slugs = probe.opts.map((o) => o.split('|')[0]).filter((v) => /_/.test(v));
-if (!slugs.length) slugs = probe.slugs;
+let slugs = probe.opts.map((o) => o.split('|')[0]).filter(Boolean);
 slugs = [...new Set(slugs)];
 writeFileSync(`${OUT}/probe.txt`, [`selects=${probe.selects} rsc=${probe.rscLen}`, '--- options', ...probe.opts, '--- slugs found', ...probe.slugs].join('\n'));
 console.log(`พบรุ่นย่อย ${slugs.length} รุ่น`);
@@ -43,13 +42,20 @@ console.log(`พบรุ่นย่อย ${slugs.length} รุ่น`);
 const index = [];
 for (let i = 0; i < slugs.length; i += 3) {
   const group = slugs.slice(i, i + 3);
-  const url = `${BASE}/compare?${group.map((s) => `model=${s}`).join('&')}`;
   try {
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 });
-    await page.waitForTimeout(2500);
+    // เลือกรุ่นในช่องเปรียบเทียบ 3 ช่องเหมือนคนกดเอง
+    await page.goto(BASE + START, { waitUntil: 'networkidle', timeout: 90000 });
+    await page.waitForTimeout(1500);
+    for (let k = 0; k < group.length; k++) {
+      const sel = page.locator(`select:has(option[value="${group[k]}"])`);
+      await sel.nth(Math.min(k, (await sel.count()) - 1)).selectOption(group[k]);
+      await page.waitForTimeout(1800);
+    }
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForTimeout(1500);
     const text = await page.evaluate(() => document.querySelector('main')?.innerText ?? document.body.innerText);
     const f = `cmp-${String(i / 3 + 1).padStart(2, '0')}.txt`;
-    writeFileSync(`${OUT}/${f}`, `MODELS: ${group.join(' , ')}\n\n${text}`);
+    writeFileSync(`${OUT}/${f}`, `MODELS: ${group.join(' , ')}\nURL: ${page.url()}\n\n${text}`);
     index.push(`${f}\t${group.join(' , ')}`);
     console.log('✔', f, group.join(' , '));
   } catch (e) { console.log('✖', group.join(','), e.message); }
