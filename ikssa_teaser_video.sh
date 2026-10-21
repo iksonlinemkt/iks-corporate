@@ -3,7 +3,7 @@
 # รัน:  bash /root/ikssa_teaser_video.sh [GOOGLE_DRIVE_FILE_ID]
 if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then echo "กรุณารันด้วย: bash ${BASH_SOURCE[0]}"; return 1 2>/dev/null || exit 1; fi
 set -euo pipefail
-ID=${1:-186ClAfoYkKndV5qYmtZAAiICUx-hKQk0}
+ID=${1:-1iGiCDPOCIa6Ab5CDvZrZ6EzE3p48wzKU}
 CAMPAIGN=${CAMPAIGN:-bi-turbo-2026}
 MEDIA_DIR=${MEDIA_DIR:-/var/www/ikssa-media}
 FFMPEG_IMG=jrottenberg/ffmpeg:6.1-ubuntu
