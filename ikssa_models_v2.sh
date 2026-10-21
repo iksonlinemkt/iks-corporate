@@ -177,7 +177,7 @@ for (const [key, s] of Object.entries(SERIES)) {
   try {
     const raw = s.local ? readFileSync(path.join(LOCAL, s.local)) : await cdn(s.car);
     const trimmed = await sharp(raw).ensureAlpha().trim({ threshold: 1 }).png().toBuffer();
-    const cut = await sharp(trimmed).resize(1140, 740, { fit: 'inside', withoutEnlargement: !!s.local }).toBuffer();
+    const cut = await sharp(trimmed).resize(1140, 740, { fit: 'inside', kernel: 'lanczos3' }).sharpen({ sigma: s.local ? 0.8 : 0.3 }).toBuffer();
     const cm = await sharp(cut).metadata();
     const cutoutFile = `${DIR}/series-${key}-cutout.webp`;
     await sharp({ create: { width: 1200, height: 800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
