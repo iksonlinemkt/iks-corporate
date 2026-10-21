@@ -4,7 +4,8 @@
 # ขั้นตอน (รันได้ซ้ำ ปลอดภัย):
 #   รอบ 1 — ก่อนแก้ DNS:  bash /root/ikssa_primary_domain.sh     → เตรียมเซิร์ฟเวอร์ให้รับโดเมนใหม่ไว้ก่อน
 #   แก้ DNS:  A record ของ @ และ www → IP เซิร์ฟเวอร์นี้
-#   รอบ 2 — หลัง DNS ชี้มาแล้ว: bash /root/ikssa_primary_domain.sh → ขอ SSL + เปลี่ยนโดเมนหลัก + ikssa.io ส่งต่อมา
+#   รอบ 2 — หลัง DNS ชี้มาแล้ว: bash /root/ikssa_primary_domain.sh → ขอ SSL + เปลี่ยนโดเมนหลัก (ikssa.io ยังเปิดได้ปกติ)
+#   รอบ 3 — อีก 24 ชม. (ให้ DNS ทั่วโลกลืมค่าเก่า กันวนไม่รู้จบ): bash /root/ikssa_primary_domain.sh --redirect-old
 # ย้อนกลับ: bash /root/ikssa_primary_domain.sh --rollback
 if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then echo "กรุณารันด้วย: bash ${BASH_SOURCE[0]}"; return 1 2>/dev/null || exit 1; fi
 set -euo pipefail
@@ -49,9 +50,10 @@ reload_or_restore() {
 # ---------- ย้อนกลับ ----------
 if [ "${1:-}" = "--rollback" ]; then
   say "ย้อนกลับเป็น $OLD"
-  ls "$BK"/*.conf >/dev/null 2>&1 || die "ไม่พบไฟล์สำรองใน $BK"
-  for f in "$BK"/*.conf; do cp "$f" "$AV/"; okay "คืนค่า $(basename "$f")"; done
-  reload_or_restore
+  if ls "$BK"/*.conf >/dev/null 2>&1; then
+    for f in "$BK"/*.conf; do cp "$f" "$AV/"; okay "คืนค่า $(basename "$f")"; done
+    reload_or_restore
+  fi
   set_site_url "https://$OLD"
   okay "ย้อนกลับเรียบร้อย — เว็บหลักกลับเป็น https://$OLD"
   exit 0
@@ -129,7 +131,18 @@ okay "https://$NEW ใช้ได้"
 say "4/4 ให้ $NEW เป็นโดเมนหลัก"
 set_site_url "https://$NEW"
 
-# ikssa.io (http และ https) → โดเมนใหม่ แบบ 301 พร้อม path เดิม
+# ikssa.io (http และ https) → โดเมนใหม่ แบบ 301 พร้อม path เดิม — ทำเฉพาะเมื่อสั่ง --redirect-old
+# (ถ้าทำทันที ลูกค้าที่ DNS ยังจำ IP เก่าจะวน: โดเมนใหม่(เครื่องเดิม) → ikssa.io → โดเมนใหม่(เครื่องเดิม) → …)
+if [ "${1:-}" != "--redirect-old" ]; then
+  okay "ช่อง URL แสดง https://$NEW แล้ว · Google จะนับ $NEW เป็นเว็บหลัก (canonical)"
+  warn "$OLD ยังเปิดเว็บได้ตามปกติ (ยังไม่ส่งต่อ) — อีก 24 ชั่วโมงให้รัน: bash /root/ikssa_primary_domain.sh --redirect-old"
+  echo
+  for u in "https://$NEW/" "https://www.$NEW/live?src=fb" "https://$OLD/"; do
+    printf '  %-42s ' "$u"; curl -s -o /dev/null -m 10 -w '%{http_code} -> %{redirect_url}\n' "$u" || echo "เชื่อมต่อไม่ได้"
+  done
+  echo; echo "  หลังบ้าน: https://$NEW/admin (ต้องล็อกอินใหม่ 1 ครั้ง)"
+  exit 0
+fi
 for f in $(grep -l "ServerName $OLD" "$AV"/*.conf 2>/dev/null); do
   base=$(basename "$f")
   [ -f "$BK/$base" ] || cp "$f" "$BK/$base"
