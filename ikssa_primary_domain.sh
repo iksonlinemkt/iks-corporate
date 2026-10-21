@@ -42,6 +42,12 @@ resolve4() {
   fi
 }
 
+# certbot ปิดกฎ www → โดเมน ในไฟล์ https (กันวน) · กฎนี้ทำงานเฉพาะ www จึงไม่วน → เปิดกลับ
+enable_www_rule() {
+  local f="$AV/$NEW-le-ssl.conf"
+  [ -f "$f" ] && sed -i -E 's/^#\s+(Rewrite(Cond|Rule) .*(\^www|%1\/\$1|well-known).*)$/    \1/' "$f" || true
+}
+
 set_site_url() {
   echo "$1" > "$CONF_DIR/site_url"
   if [ -f "$APP_DIR/.env.production" ]; then
@@ -103,7 +109,7 @@ if [ "${1:-}" = "--add" ]; then
   ARGS=(); for n in $NAMES; do ARGS+=(-d "$n"); done
   certbot --apache --non-interactive --agree-tos --register-unsafely-without-email --redirect --expand \
     --cert-name "$NEW" "${ARGS[@]}" || die "ขอ SSL ไม่สำเร็จ — ลองใหม่ภายหลัง (http ของ $D ใช้ได้แล้ว)"
-  systemctl reload apache2; sleep 2
+  enable_www_rule; systemctl reload apache2; sleep 2
   for u in "https://$D/" "https://www.$D/live?src=fb" "http://$D/"; do
     printf '  %-48s ' "$u"; curl -s -o /dev/null -m 10 -w '%{http_code} -> %{redirect_url}\n' "$u" || echo "เชื่อมต่อไม่ได้"
   done
@@ -177,6 +183,7 @@ certbot --apache --non-interactive --agree-tos --register-unsafely-without-email
   --cert-name "$NEW" -d "$NEW" -d "www.$NEW" || die "ขอ SSL ไม่สำเร็จ — เว็บยังใช้ $OLD ตามเดิม ลองรันใหม่ภายหลัง"
 curl -s -o /dev/null -m 15 --resolve "$NEW:443:127.0.0.1" "https://$NEW/" -w '%{http_code}' | grep -q '^200$' \
   || die "https://$NEW ยังเปิดไม่ได้ — ยังไม่เปลี่ยนโดเมนหลัก"
+enable_www_rule; reload_or_restore
 okay "https://$NEW ใช้ได้"
 
 # ---------- 4) เปลี่ยนโดเมนหลัก + ikssa.io ส่งต่อมา ----------
