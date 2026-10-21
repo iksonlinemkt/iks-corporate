@@ -45,7 +45,10 @@ resolve4() {
 # certbot ปิดกฎ www → โดเมน ในไฟล์ https (กันวน) · กฎนี้ทำงานเฉพาะ www จึงไม่วน → เปิดกลับ
 enable_www_rule() {
   local f="$AV/$NEW-le-ssl.conf"
-  [ -f "$f" ] && sed -i -E 's/^#\s+(Rewrite(Cond|Rule) .*(\^www|%1\/\$1|well-known).*)$/    \1/' "$f" || true
+  [ -f "$f" ] || return 0
+  grep -q "www-strip" "$f" && return 0
+  sed -i -E '/^\s*#?\s*Rewrite(Cond|Rule) .*(www|well-known|'"${NEW//./\\.}"'\/\$1|%1\/)/d' "$f"
+  sed -i '0,/^\s*ServerName '"$NEW"'\s*$/s//&\n    # www-strip\n    RewriteEngine On\n    RewriteCond %{HTTP_HOST} ^www\\.(.+)$ [NC]\n    RewriteRule ^\/(.*)$ https:\/\/%1\/$1 [R=301,L]/' "$f"
 }
 
 set_site_url() {
