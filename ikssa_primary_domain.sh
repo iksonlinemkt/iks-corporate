@@ -6,6 +6,8 @@
 #   แก้ DNS:  A record ของ @ และ www → IP เซิร์ฟเวอร์นี้
 #   รอบ 2 — หลัง DNS ชี้มาแล้ว: bash /root/ikssa_primary_domain.sh → ขอ SSL + เปลี่ยนโดเมนหลัก (ikssa.io ยังเปิดได้ปกติ)
 #   รอบ 3 — อีก 24 ชม. (ให้ DNS ทั่วโลกลืมค่าเก่า กันวนไม่รู้จบ): bash /root/ikssa_primary_domain.sh --redirect-old
+# เพิ่มโดเมนที่แสดงตามที่พิมพ์ (เว็บเดียวกัน · Google นับโดเมนหลักเป็น canonical):
+#   ชี้ A record ของโดเมนและ www มาที่เซิร์ฟเวอร์นี้ แล้ว: bash /root/ikssa_primary_domain.sh --add อีซูซุกรุงเทพ.com
 # ย้อนกลับ: bash /root/ikssa_primary_domain.sh --rollback
 if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then echo "กรุณารันด้วย: bash ${BASH_SOURCE[0]}"; return 1 2>/dev/null || exit 1; fi
 set -euo pipefail
@@ -59,6 +61,45 @@ if [ "${1:-}" = "--rollback" ]; then
   exit 0
 fi
 
+# ---------- เพิ่มโดเมนเสริม ----------
+if [ "${1:-}" = "--add" ]; then
+  RAW=${2:-}; [ -n "$RAW" ] || die "ระบุโดเมน เช่น: bash $0 --add อีซูซุกรุงเทพ.com"
+  D=$(python3 -c 'import sys; print(sys.argv[1].strip().lower().removeprefix("www.").encode("idna").decode())' "$RAW") || die "ชื่อโดเมนไม่ถูกต้อง"
+  [ "$D" = "$NEW" ] && die "$D คือโดเมนหลักอยู่แล้ว"
+  [ -f "$AV/$NEW-le-ssl.conf" ] || die "ต้องทำโดเมนหลัก $NEW ให้เสร็จก่อน (รัน bash $0 จนขึ้น ✔ https://$NEW ใช้ได้)"
+  say "เพิ่ม $RAW ($D)"
+  MYIP=$(curl -4 -s -m 10 https://api.ipify.org || hostname -I | awk '{print $1}')
+  for d in "$D" "www.$D"; do
+    ips=$(getent ahostsv4 "$d" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')
+    if printf '%s' " $ips" | grep -q " $MYIP "; then printf '  ✔ %-40s → %s\n' "$d" "$MYIP"
+    else printf '  · %-40s → %s\n' "$d" "${ips:-ไม่พบ}"
+      die "DNS ของ $d ยังไม่ชี้มาที่ $MYIP — แก้ A record (หรือ CNAME ของ www) แล้วรอ 15–60 นาที ค่อยรันใหม่"; fi
+  done
+  for f in "$AV/$NEW.conf" "$AV/$NEW-le-ssl.conf"; do
+    [ -f "$BK/$(basename "$f").pre-add" ] || cp "$f" "$BK/$(basename "$f").pre-add"
+    # กฎ www รุ่นแรก (ส่งทุกอย่างไปโดเมนหลัก) → รุ่นใหม่ที่คงชื่อโดเมน
+    sed -i -e 's|^\(\s*RewriteCond %{HTTP_HOST} \)\^www\\\. \[NC\]|\1^www\\.(.+)$ [NC]|' \
+           -e "s|^\(\s*RewriteRule \^/(\.\*)\$ \)https://$NEW/\$1 \[R=301,L\]|\1https://%1/\$1 [R=301,L]|" "$f"
+    grep -qE "ServerAlias .*\b$D\b" "$f" || sed -i "0,/ServerAlias www.$NEW/s//ServerAlias www.$NEW\n    ServerAlias $D www.$D/" "$f"
+  done
+  if ! apache2ctl configtest >/dev/null 2>&1; then
+    apache2ctl configtest || true
+    for f in "$AV/$NEW.conf" "$AV/$NEW-le-ssl.conf"; do cp "$BK/$(basename "$f").pre-add" "$f"; done
+    die "ตั้งค่า Apache ไม่ผ่าน — คืนค่าเดิมแล้ว"
+  fi
+  systemctl reload apache2
+  NAMES=$(grep -hE '^\s*Server(Name|Alias)' "$AV/$NEW.conf" | awk '{for(i=2;i<=NF;i++) print $i}' | sort -u)
+  ARGS=(); for n in $NAMES; do ARGS+=(-d "$n"); done
+  certbot --apache --non-interactive --agree-tos --register-unsafely-without-email --redirect --expand \
+    --cert-name "$NEW" "${ARGS[@]}" || die "ขอ SSL ไม่สำเร็จ — ลองใหม่ภายหลัง (http ของ $D ใช้ได้แล้ว)"
+  systemctl reload apache2; sleep 2
+  for u in "https://$D/" "https://www.$D/live?src=fb" "http://$D/"; do
+    printf '  %-48s ' "$u"; curl -s -o /dev/null -m 10 -w '%{http_code} -> %{redirect_url}\n' "$u" || echo "เชื่อมต่อไม่ได้"
+  done
+  okay "เสร็จ — พิมพ์ $RAW แล้วช่อง URL แสดง $RAW (เว็บเดียวกัน · Google นับ $NEW เป็นหลัก)"
+  exit 0
+fi
+
 # ---------- 1) vhost สำหรับโดเมนใหม่ (เตรียมไว้ก่อนแก้ DNS) ----------
 say "1/4 เตรียม Apache สำหรับ $NEW"
 NEWCONF="$AV/$NEW.conf"
@@ -73,11 +114,11 @@ if [ ! -f "$NEWCONF" ]; then
     LimitRequestBody 13000000
     RequestHeader set X-Forwarded-Proto expr=%{REQUEST_SCHEME}
 
-    # www.$NEW → https://$NEW (ช่อง URL แบบเดียว)
+    # www.โดเมน → https://โดเมน (ตัด www ออก คงชื่อโดเมนที่ลูกค้าพิมพ์)
     RewriteEngine On
-    RewriteCond %{HTTP_HOST} ^www\. [NC]
+    RewriteCond %{HTTP_HOST} ^www\.(.+)\$ [NC]
     RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
-    RewriteRule ^/(.*)\$ https://$NEW/\$1 [R=301,L]
+    RewriteRule ^/(.*)\$ https://%1/\$1 [R=301,L]
 
     ProxyPass /.well-known/acme-challenge/ !
     ProxyPass /media/ !
