@@ -4,7 +4,8 @@
 # ขั้นตอน (รันได้ซ้ำ ปลอดภัย):
 #   รอบ 1 — ก่อนแก้ DNS:  bash /root/ikssa_primary_domain.sh     → เตรียมเซิร์ฟเวอร์ให้รับโดเมนใหม่ไว้ก่อน
 #   แก้ DNS:  A record ของ @ และ www → IP เซิร์ฟเวอร์นี้
-#   รอบ 2 — หลัง DNS ชี้มาแล้ว: bash /root/ikssa_primary_domain.sh → ขอ SSL + เปลี่ยนโดเมนหลัก (ikssa.io ยังเปิดได้ปกติ)
+#   รอบ 2 — หลัง DNS ชี้มาแล้ว: bash /root/ikssa_primary_domain.sh
+#            (ไม่อยากรอค่าเก่าหมดอายุ: DNS_SERVER=<IP nameserver ของโดเมน> bash /root/ikssa_primary_domain.sh) → ขอ SSL + เปลี่ยนโดเมนหลัก (ikssa.io ยังเปิดได้ปกติ)
 #   รอบ 3 — อีก 24 ชม. (ให้ DNS ทั่วโลกลืมค่าเก่า กันวนไม่รู้จบ): bash /root/ikssa_primary_domain.sh --redirect-old
 # เพิ่มโดเมนที่แสดงตามที่พิมพ์ (เว็บเดียวกัน · Google นับโดเมนหลักเป็น canonical):
 #   ชี้ A record ของโดเมนและ www มาที่เซิร์ฟเวอร์นี้ แล้ว: bash /root/ikssa_primary_domain.sh --add อีซูซุกรุงเทพ.com
@@ -30,6 +31,16 @@ die()  { printf '\033[1;31m✖ %s\033[0m\n' "$*"; exit 1; }
 [ "$(id -u)" = 0 ] || die "ต้องรันด้วย root"
 systemctl is-active --quiet apache2 || die "Apache ไม่ได้ทำงานอยู่"
 mkdir -p "$BK"
+
+# เช็ก DNS: ปกติใช้ระบบของเครื่อง · ตั้ง DNS_SERVER=<IP ของ nameserver> เพื่อถามต้นทางโดยตรง (ไม่ต้องรอค่าเก่าหมดอายุ)
+resolve4() {
+  if [ -n "${DNS_SERVER:-}" ]; then
+    command -v dig >/dev/null || apt-get install -y -q dnsutils >/dev/null 2>&1 || true
+    dig +short "$1" A "@$DNS_SERVER" 2>/dev/null | grep -E '^[0-9.]+$' | sort -u | tr '\n' ' '
+  else
+    getent ahostsv4 "$1" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' '
+  fi
+}
 
 set_site_url() {
   echo "$1" > "$CONF_DIR/site_url"
@@ -70,7 +81,7 @@ if [ "${1:-}" = "--add" ]; then
   say "เพิ่ม $RAW ($D)"
   MYIP=$(curl -4 -s -m 10 https://api.ipify.org || hostname -I | awk '{print $1}')
   for d in "$D" "www.$D"; do
-    ips=$(getent ahostsv4 "$d" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')
+    ips=$(resolve4 "$d")
     if printf '%s' " $ips" | grep -q " $MYIP "; then printf '  ✔ %-40s → %s\n' "$d" "$MYIP"
     else printf '  · %-40s → %s\n' "$d" "${ips:-ไม่พบ}"
       die "DNS ของ $d ยังไม่ชี้มาที่ $MYIP — แก้ A record (หรือ CNAME ของ www) แล้วรอ 15–60 นาที ค่อยรันใหม่"; fi
@@ -149,7 +160,7 @@ say "2/4 เช็ก DNS"
 MYIP=$(curl -4 -s -m 10 https://api.ipify.org || hostname -I | awk '{print $1}')
 ok_dns=1
 for d in "$NEW" "www.$NEW"; do
-  ips=$(getent ahostsv4 "$d" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')
+  ips=$(resolve4 "$d")
   if printf '%s' " $ips" | grep -q " $MYIP "; then printf '  ✔ %-28s → %s\n' "$d" "$MYIP"
   else printf '  · %-28s → %s\n' "$d" "${ips:-ไม่พบ}"; ok_dns=0; fi
 done
