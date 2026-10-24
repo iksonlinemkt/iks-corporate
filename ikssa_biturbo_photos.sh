@@ -84,9 +84,20 @@ for row in "${FOLDERS[@]}"; do
   IFS='|' read -r KEY ID ALT <<<"$row"
   echo; echo "▶ $ALT"
   mkdir -p "$TMP/$KEY"
-  docker run --rm -v "$TMP":/w "$PY_IMG" sh -c \
-    "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY' 2>&1 | grep -Ev '^(Processing|Retrieving|Building|To:|From:|  [0-9]+%|$)' | tail -15" \
-    || echo "! โหลดบางไฟล์ไม่สำเร็จ (จะใช้เท่าที่โหลดได้)"
+  # โหลดจาก Drive (ลองซ้ำได้ 3 รอบ เผื่อ Google จำกัดการโหลดชั่วคราว · --continue = ข้ามไฟล์ที่ได้แล้ว)
+  for TRY in 1 2 3; do
+    docker run --rm -v "$TMP":/w "$PY_IMG" sh -c \
+      "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder --continue 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY'" \
+      > "$TMP/$KEY.log" 2>&1 || true
+    GOT=$(find "$TMP/$KEY" -type f -size +1k 2>/dev/null | wc -l)
+    LISTED=$(grep -c '^- ' "$TMP/$KEY.log" || true)
+    if [ "$LISTED" -gt 0 ]; then echo "  รอบ $TRY: ได้ $GOT จาก $LISTED ไฟล์"; else echo "  รอบ $TRY: ได้ $GOT ไฟล์"; fi
+    if [ "$GOT" -gt 0 ] && { [ "$LISTED" -eq 0 ] || [ "$GOT" -ge "$LISTED" ]; }; then break; fi
+    [ "$TRY" -lt 3 ] && { echo "  รอ 30 วินาทีแล้วลองใหม่…"; sleep 30; }
+  done
+  if [ "$GOT" -eq 0 ]; then
+    echo "  ── ข้อความจาก Google Drive ──"; grep -v '^- ' "$TMP/$KEY.log" | grep -Ev '%\|' | tail -25 | sed 's/^/  /'
+  fi
   CNT=$(find "$TMP/$KEY" -type f | grep -Eic '\.(jpe?g|jfif|jpe|png|webp|tiff?|avif|heic|heif|gif|bmp)$' || true)
   if [ "$CNT" -eq 0 ]; then
     ALLF=$(find "$TMP/$KEY" -type f | wc -l)
