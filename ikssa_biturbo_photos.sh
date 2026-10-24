@@ -85,7 +85,7 @@ for row in "${FOLDERS[@]}"; do
   echo; echo "▶ $ALT"
   mkdir -p "$TMP/$KEY"
   docker run --rm -v "$TMP":/w "$PY_IMG" sh -c \
-    "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder --remaining-ok 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY' 2>&1 | grep -Ev '^(Processing|Retrieving|Building|To:|From:|  [0-9]+%|$)' | tail -15" \
+    "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY' 2>&1 | grep -Ev '^(Processing|Retrieving|Building|To:|From:|  [0-9]+%|$)' | tail -15" \
     || echo "! โหลดบางไฟล์ไม่สำเร็จ (จะใช้เท่าที่โหลดได้)"
   CNT=$(find "$TMP/$KEY" -type f | grep -Eic '\.(jpe?g|png|webp|tiff?|avif|heic|heif)$' || true)
   if [ "$CNT" -eq 0 ]; then
