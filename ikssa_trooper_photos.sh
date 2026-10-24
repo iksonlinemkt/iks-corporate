@@ -86,7 +86,7 @@ for row in "${FOLDERS[@]}"; do
   echo; echo "▶ $ALT"
   mkdir -p "$TMP/$KEY"
   # โหลดจาก Drive (ลองซ้ำได้ 3 รอบ เผื่อ Google จำกัดการโหลดชั่วคราว · --continue = ข้ามไฟล์ที่ได้แล้ว)
-  for TRY in 1 2 3; do
+  for TRY in 1 2; do
     docker run --rm -v "$TMP":/w "$PY_IMG" sh -c \
       "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder --continue 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY'" \
       > "$TMP/$KEY.log" 2>&1 || true
@@ -94,8 +94,25 @@ for row in "${FOLDERS[@]}"; do
     LISTED=$(grep -c '^- ' "$TMP/$KEY.log" || true)
     if [ "$LISTED" -gt 0 ]; then echo "  รอบ $TRY: ได้ $GOT จาก $LISTED ไฟล์"; else echo "  รอบ $TRY: ได้ $GOT ไฟล์"; fi
     if [ "$GOT" -gt 0 ] && { [ "$LISTED" -eq 0 ] || [ "$GOT" -ge "$LISTED" ]; }; then break; fi
-    [ "$TRY" -lt 3 ] && { echo "  รอ 30 วินาทีแล้วลองใหม่…"; sleep 30; }
+    [ "$TRY" -lt 2 ] && { echo "  รอ 20 วินาทีแล้วลองใหม่…"; sleep 20; }
   done
+  # สำรอง: gdown เห็นรายชื่อไฟล์แต่โหลดไม่ได้ → โหลดทีละไฟล์ตรงจาก Google Drive ด้วยรหัสไฟล์
+  if grep -q '^Processing file ' "$TMP/$KEY.log"; then
+    NEED=0; OK=0
+    while read -r _ _ FID FNAME; do
+      [ -n "$FID" ] || continue
+      FNAME=$(basename "$FNAME"); OUTF="$TMP/$KEY/$FNAME"
+      [ -s "$OUTF" ] && continue
+      NEED=$((NEED + 1))
+      if curl -fsSL --retry 2 -m 120 -o "$OUTF" "https://drive.usercontent.google.com/download?id=$FID&export=download&confirm=t" \
+         && ! head -c 400 "$OUTF" | grep -qi '<html\|<!doctype'; then OK=$((OK + 1)); else rm -f "$OUTF"; fi
+    done < <(grep '^Processing file ' "$TMP/$KEY.log")
+    if [ "$NEED" -gt 0 ]; then
+      echo "  โหลดตรงทีละไฟล์: ได้เพิ่ม $OK จาก $NEED ไฟล์"
+      [ "$OK" -lt "$NEED" ] && echo "  ! บางไฟล์ยังโหลดไม่ได้ — ใน Google Drive เลือกรูปทั้งหมดในโฟลเดอร์ → แชร์ → \"ทุกคนที่มีลิงก์\" แล้วรันใหม่"
+      GOT=$(find "$TMP/$KEY" -type f -size +1k 2>/dev/null | wc -l)
+    fi
+  fi
   if [ "$GOT" -eq 0 ]; then
     echo "  ── ข้อความจาก Google Drive ──"; grep -v '^- ' "$TMP/$KEY.log" | grep -Ev '%\|' | tail -25 | sed 's/^/  /'
   fi
