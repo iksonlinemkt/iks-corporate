@@ -27,7 +27,9 @@ import path from 'node:path';
 const require = createRequire(process.env.SHARP_FROM ?? '/opt/ikssa-web/package.json');
 const sharp = require('sharp');
 const [SRC, MEDIA, KEY, SOURCE, ALT, STAMP, SQL_OUT] = process.argv.slice(2);
-const DIR = 'gallery/biturbo';
+const DIR = process.env.GALLERY_DIR ?? 'gallery/biturbo';
+// ACTIVITY_SLUG=... → ใส่รูปเป็นสไลด์ของกิจกรรม (รูปแรก = รูปปก) แทนตารางแกลเลอรี
+const ACT = process.env.ACTIVITY_SLUG;
 mkdirSync(path.join(MEDIA, DIR), { recursive: true });
 const q = (s) => (s === null || s === undefined ? 'null' : `'${String(s).replace(/'/g, "''")}'`);
 
@@ -55,9 +57,19 @@ for (const f of files) {
     console.log(`  ! ข้าม ${path.basename(f)}: ${e.message.split('\n')[0]}`);
   }
 }
-const out = ['set client_min_messages = warning;', 'begin;', `delete from public.gallery_images where source = ${q(SOURCE)};`];
-if (rows.length) {
-  out.push(`insert into public.gallery_images (group_key, image, thumb, alt, width, height, source, sort_order) values\n  ${rows.join(',\n  ')};`);
+const out = ['set client_min_messages = warning;', 'begin;'];
+if (ACT) {
+  const imgs = rows.map((r) => r.match(/^\('[^']*', '([^']*)'/)[1]);
+  if (imgs.length) {
+    out.push(`insert into public.activities (slug, title, summary, cover_image, gallery, status, sort_order)
+values (${q(ACT)}, ${q(process.env.ACTIVITY_TITLE ?? ALT)}, ${q(process.env.ACTIVITY_SUMMARY ?? null)}, ${q(imgs[0])}, ${q(JSON.stringify(imgs.slice(1)))}::jsonb, 'published', 0)
+on conflict (slug) do update set cover_image = excluded.cover_image, gallery = excluded.gallery;`);
+  }
+} else {
+  out.push(`delete from public.gallery_images where source = ${q(SOURCE)};`);
+  if (rows.length) out.push(`insert into public.gallery_images (group_key, image, thumb, alt, width, height, source, sort_order) values\n  ${rows.join(',\n  ')};`);
+}
+if (media.length) {
   out.push(`insert into public.media_files (path, original_name, mime_type, size_bytes, width, height, alt_text) values\n  ${media.join(',\n  ')}\non conflict (path) do update set size_bytes = excluded.size_bytes, width = excluded.width, height = excluded.height, alt_text = excluded.alt_text;`);
 }
 out.push('commit;');
