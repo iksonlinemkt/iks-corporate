@@ -21,7 +21,8 @@ docker exec iks-web-db psql -q -U iks_owner -d iks_web -tAc "select 1 from infor
 cat > "$TMP/process.mjs" <<'NODE_EOF'
 // ย่อรูปแกลเลอรีเป็น webp + เขียน SQL: node process.mjs <SRC_DIR> <MEDIA_DIR> <GROUP_KEY> <SOURCE_TAG> <ALT_PREFIX> <STAMP> <SQL_OUT>
 import { createRequire } from 'node:module';
-import { mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 const require = createRequire(process.env.SHARP_FROM ?? '/opt/ikssa-web/package.json');
@@ -39,8 +40,14 @@ const files = walk(SRC).filter((f) => /\.(jpe?g|jfif|jpe|png|webp|tiff?|avif|hei
 
 const rows = [];
 const media = [];
+const seen = new Set();
 let n = 0;
+let dup = 0;
 for (const f of files) {
+  // ข้ามไฟล์ซ้ำ (เนื้อหาเหมือนกัน แม้ชื่อหรือโฟลเดอร์ต่างกัน)
+  const h = createHash('sha1').update(readFileSync(f)).digest('hex');
+  if (seen.has(h)) { dup++; continue; }
+  seen.add(h);
   try {
     const base = sharp(f, { failOn: 'none' }).rotate();
     const num = String(n + 1).padStart(2, '0');
@@ -74,7 +81,7 @@ if (media.length) {
 }
 out.push('commit;');
 writeFileSync(SQL_OUT, out.join('\n') + '\n');
-console.log(`รวม ${n} รูป`);
+console.log(`รวม ${n} รูป${dup ? ` (ข้ามรูปซ้ำ ${dup} ไฟล์)` : ''}`);
 NODE_EOF
 
 echo "▶ เตรียมตัวโหลดไฟล์จาก Google Drive (ครั้งแรก 1-2 นาที)…"
@@ -102,6 +109,7 @@ for row in "${FOLDERS[@]}"; do
       [ -n "$FID" ] || continue
       FNAME=$(basename "$FNAME"); OUTF="$TMP/$KEY/$FNAME"
       [ -s "$OUTF" ] && continue
+      find "$TMP/$KEY" -type f -name "$FNAME" -size +1k | grep -q . && continue
       NEED=$((NEED + 1))
       if curl -fsSL --retry 2 -m 120 -o "$OUTF" "https://drive.usercontent.google.com/download?id=$FID&export=download&confirm=t" \
          && ! head -c 400 "$OUTF" | grep -qi '<html\|<!doctype'; then OK=$((OK + 1)); else rm -f "$OUTF"; fi
