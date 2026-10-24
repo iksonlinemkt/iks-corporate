@@ -34,7 +34,7 @@ mkdirSync(path.join(MEDIA, DIR), { recursive: true });
 const q = (s) => (s === null || s === undefined ? 'null' : `'${String(s).replace(/'/g, "''")}'`);
 
 const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
-const files = walk(SRC).filter((f) => /\.(jpe?g|png|webp|tiff?|avif|heic|heif)$/i.test(f))
+const files = walk(SRC).filter((f) => /\.(jpe?g|jfif|jpe|png|webp|tiff?|avif|heic|heif|gif|bmp)$/i.test(f))
   .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
 
 const rows = [];
@@ -87,7 +87,7 @@ for row in "${FOLDERS[@]}"; do
   docker run --rm -v "$TMP":/w "$PY_IMG" sh -c \
     "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY' 2>&1 | grep -Ev '^(Processing|Retrieving|Building|To:|From:|  [0-9]+%|$)' | tail -15" \
     || echo "! โหลดบางไฟล์ไม่สำเร็จ (จะใช้เท่าที่โหลดได้)"
-  CNT=$(find "$TMP/$KEY" -type f | grep -Eic '\.(jpe?g|png|webp|tiff?|avif|heic|heif)$' || true)
+  CNT=$(find "$TMP/$KEY" -type f | grep -Eic '\.(jpe?g|jfif|jpe|png|webp|tiff?|avif|heic|heif|gif|bmp)$' || true)
   if [ "$CNT" -eq 0 ]; then
     ALLF=$(find "$TMP/$KEY" -type f | wc -l)
     echo "✖ ไม่พบไฟล์รูปในโฟลเดอร์ (ได้ไฟล์อื่น $ALLF ไฟล์)"
