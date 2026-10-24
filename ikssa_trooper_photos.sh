@@ -86,11 +86,14 @@ for row in "${FOLDERS[@]}"; do
   echo; echo "▶ $ALT"
   mkdir -p "$TMP/$KEY"
   docker run --rm -v "$TMP":/w "$PY_IMG" sh -c \
-    "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder --remaining-ok -q 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY'" \
+    "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder --remaining-ok 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY' 2>&1 | grep -Ev '^(Processing|Retrieving|Building|To:|From:|  [0-9]+%|$)' | tail -15" \
     || echo "! โหลดบางไฟล์ไม่สำเร็จ (จะใช้เท่าที่โหลดได้)"
   CNT=$(find "$TMP/$KEY" -type f | grep -Eic '\.(jpe?g|png|webp|tiff?|avif|heic|heif)$' || true)
   if [ "$CNT" -eq 0 ]; then
-    echo "✖ ไม่พบรูปในโฟลเดอร์ — ตรวจว่าแชร์โฟลเดอร์เป็น \"ทุกคนที่มีลิงก์ (Anyone with the link)\" แล้วรันใหม่"
+    ALLF=$(find "$TMP/$KEY" -type f | wc -l)
+    echo "✖ ไม่พบไฟล์รูปในโฟลเดอร์ (ได้ไฟล์อื่น $ALLF ไฟล์)"
+    find "$TMP/$KEY" -type f | sed "s|$TMP/$KEY/|    · |" | head -20
+    echo "  ตรวจว่าแชร์โฟลเดอร์เป็น \"ทุกคนที่มีลิงก์ (Anyone with the link)\" และในโฟลเดอร์เป็นไฟล์รูป (JPG/PNG) แล้วรันใหม่"
     continue
   fi
   echo "  ได้ $CNT ไฟล์ · กำลังย่อรูป…"
@@ -104,6 +107,7 @@ done
 chmod 755 "$MEDIA_DIR/gallery" "$MEDIA_DIR/$GALLERY_DIR" 2>/dev/null || true
 chmod 644 "$MEDIA_DIR/$GALLERY_DIR"/*.webp 2>/dev/null || true
 
+if [ "$TOTAL" -eq 0 ]; then echo; echo "✖ ยังไม่ได้รูปเลย — ดูข้อความด้านบน"; exit 1; fi
 echo
 docker exec iks-web-db psql -q -U iks_owner -d iks_web -c "select title as กิจกรรม, 1 + jsonb_array_length(gallery) as จำนวนรูป from public.activities where slug = '$ACTIVITY_SLUG'"
 echo "✔ เสร็จแล้ว — ดูได้ที่ $SITE/activities#$ACTIVITY_SLUG"
