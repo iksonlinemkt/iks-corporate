@@ -182,8 +182,11 @@ fi
 
 # ---------- 3) SSL ของโดเมนใหม่ ----------
 say "3/4 ขอ SSL สำหรับ $NEW"
-certbot --apache --non-interactive --agree-tos --register-unsafely-without-email --redirect \
-  --cert-name "$NEW" -d "$NEW" -d "www.$NEW" || die "ขอ SSL ไม่สำเร็จ — เว็บยังใช้ $OLD ตามเดิม ลองรันใหม่ภายหลัง"
+# ใบรับรองต้องครอบคลุมทุกชื่อใน vhost (รวมโดเมนเสริม เช่น อีซูซุกรุงเทพ.com ที่เพิ่มด้วย --add) ไม่อย่างนั้นโดเมนเสริมจะเปิดไม่ได้
+NAMES=$(grep -hE '^\s*Server(Name|Alias)' "$NEWCONF" | awk '{for(i=2;i<=NF;i++) print $i}' | sort -u)
+CERT_ARGS=(); for n in $NAMES; do CERT_ARGS+=(-d "$n"); done
+certbot --apache --non-interactive --agree-tos --register-unsafely-without-email --redirect --expand \
+  --cert-name "$NEW" "${CERT_ARGS[@]}" || die "ขอ SSL ไม่สำเร็จ — เว็บยังใช้ $OLD ตามเดิม ลองรันใหม่ภายหลัง"
 curl -s -o /dev/null -m 15 --resolve "$NEW:443:127.0.0.1" "https://$NEW/" -w '%{http_code}' | grep -q '^200$' \
   || die "https://$NEW ยังเปิดไม่ได้ — ยังไม่เปลี่ยนโดเมนหลัก"
 enable_www_rule; reload_or_restore
@@ -238,7 +241,8 @@ reload_or_restore
 # ---------- สรุป ----------
 say "ผลทดสอบ"
 sleep 2
-for u in "https://$NEW/" "https://www.$NEW/live?src=fb" "http://$NEW/" "https://$OLD/branches/kaset" "http://$OLD/"; do
+EXTRA=$(grep -hE '^\s*ServerAlias' "$NEWCONF" | awk '{for(i=2;i<=NF;i++) print $i}' | grep -v "^www\." | grep -v "^$NEW$" | sed 's|^|https://|;s|$|/|')
+for u in "https://$NEW/" "https://www.$NEW/live?src=fb" "http://$NEW/" $EXTRA "https://$OLD/branches/kaset" "http://$OLD/"; do
   printf '  %-42s ' "$u"; curl -s -o /dev/null -m 10 -w '%{http_code} -> %{redirect_url}\n' "$u" || echo "เชื่อมต่อไม่ได้"
 done
 echo
