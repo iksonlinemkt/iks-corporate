@@ -16,6 +16,7 @@ set -euo pipefail
 SELF="$(readlink -f "${BASH_SOURCE[0]:-$0}")"
 
 APP_DIR=/opt/ikssa-web
+WEB_VERSION=__WEB_VERSION__
 CONF_DIR=/root/iks-web
 PM2_NAME=ikssa-web
 PORT=3100
@@ -67,6 +68,22 @@ umask 077
 umask 022
 okay "SITE_MODE=$SITE_MODE"
 if [ -s "$CONF_DIR/google_maps_key" ]; then okay "Google Maps API key: มี"; else printf '\033[1;33m! ยังไม่มี Google Maps API key — รีวิว/ค้นหาสาขาจาก Google จะยังไม่แสดง\033[0m\n'; fi
+
+echo "$WEB_VERSION" > "$NEW_DIR/.ikssa_version"
+
+# ---------- สำรองข้อมูลก่อนอัปเดต (กู้คืนได้ด้วย ikssa_backup.sh --restore-db / --restore-app) ----------
+say "สำรองข้อมูลก่อนอัปเดต"
+if [ -f /root/ikssa_backup.sh ]; then
+  bash /root/ikssa_backup.sh --pre-install || { rm -rf "$NEW_DIR"; die "สำรองข้อมูลไม่สำเร็จ — หยุดติดตั้งเพื่อความปลอดภัย (เว็บเดิมยังทำงานต่อ)"; }
+else
+  BK="/root/backups/ikssa/$(date +%Y%m%d-%H%M%S)-pre-install"; mkdir -p "$BK"; chmod 700 /root/backups /root/backups/ikssa "$BK"
+  docker exec iks-web-db pg_dump -U iks_owner -d iks_web -Fc --no-owner > "$BK/db.dump" \
+    || { rm -rf "$NEW_DIR"; die "สำรองฐานข้อมูลไม่สำเร็จ — หยุดติดตั้งเพื่อความปลอดภัย (เว็บเดิมยังทำงานต่อ)"; }
+  [ -d "$APP_DIR" ] && tar -czf "$BK/app.tar.gz" --exclude=./node_modules --exclude=./.next/cache -C "$APP_DIR" .
+  printf 'created=%s\ntag=pre-install\nweb_version=%s\n' "$(date -Iseconds)" "$(cat "$APP_DIR/.ikssa_version" 2>/dev/null || echo unknown)" > "$BK/INFO"
+  (cd "$BK" && sha256sum ./* > SHA256SUMS); ln -sfn "$BK" /root/backups/ikssa/latest
+  okay "สำรองแล้ว: $BK"
+fi
 
 # ---------- อัปเดตฐานข้อมูล (migration รันซ้ำได้) ----------
 if ls "$NEW_DIR"/db-migrations/*.sql >/dev/null 2>&1; then
