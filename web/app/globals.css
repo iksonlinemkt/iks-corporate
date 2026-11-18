@@ -1,0 +1,283 @@
+@import 'tailwindcss';
+
+/*
+ * CI: น้ำเงินเข้มเป็นพื้นหลัก / Copper เป็นสีตกแต่งหลัก / ดำ-ขาว-แดง ใช้ประกอบเล็กน้อย
+ * - copper        : เส้นตกแต่ง ไอคอน ปุ่มหลัก (ตัวอักษรบนปุ่มเป็นน้ำเงินเข้ม)
+ * - copper-light  : ตัวอักษร/เส้นบนพื้นน้ำเงิน
+ * - copper-dark   : ตัวอักษร/ลิงก์บนพื้นขาว (contrast ผ่าน AA)
+ * - red           : เฉพาะป้ายโปรโมชั่นและตัวเลขส่วนลด
+ */
+@theme {
+  --color-navy-950: #061630;
+  --color-navy: #0c2346;
+  --color-navy-2: #15335e;
+  --color-navy-3: #1f4275;
+  --color-blue: #1a469a;   /* น้ำเงิน CI จากโลโก้ */
+  --color-blue-soft: #e6eef9;
+  --color-copper: #c27c45;
+  --color-copper-light: #e2ab7b;
+  --color-copper-dark: #9b4228;   /* copper CI จากโลโก้ */
+  --color-red: #d51f26;
+  --color-red-dark: #b3151b;
+  --color-ink: #121417;
+  --color-steel: #566070;
+  --color-line: #dbe1ea;
+  --color-mist: #f3f5f8;
+  --color-amber: #f5b301;
+
+  --font-display: 'Bai Jamjuree', 'IBM Plex Sans Thai', system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans Thai', system-ui, sans-serif;
+
+  --radius-card: 10px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white font-sans text-navy antialiased;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    line-height: 1.25;
+    letter-spacing: -0.005em;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-copper);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-[1200px] px-4 sm:px-6;
+  }
+
+  /* ทองแดงแบบโลหะ: ใช้กับเส้นตกแต่งเท่านั้น */
+  .copper-metal {
+    background: linear-gradient(100deg, #8f521f 0%, #e2ab7b 38%, #c27c45 62%, #8f521f 100%);
+  }
+
+  /* เส้นจราจร: สัญลักษณ์ "ทุกเส้นทาง" หน้าหัวข้อ section */
+  .lane {
+    display: inline-block;
+    width: 52px;
+    height: 4px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(90deg, var(--color-copper) 0 16px, transparent 16px 22px);
+  }
+  .lane-road {
+    height: 4px;
+    background: repeating-linear-gradient(90deg, var(--color-copper-light) 0 48px, transparent 48px 80px);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-[15px] font-semibold leading-none transition-colors;
+    font-family: var(--font-display);
+    min-height: 46px;
+  }
+  /* ปุ่มหลัก: copper + ตัวอักษรน้ำเงินเข้ม */
+  .btn-primary { @apply bg-copper text-navy-950 hover:bg-copper-light; }
+  .btn-navy { @apply bg-navy text-white hover:bg-navy-2; }
+  .btn-red { @apply bg-red text-white hover:bg-red-dark; }
+  .btn-ghost-light { @apply border border-copper-light/70 text-white hover:border-copper-light hover:bg-white/5; }
+  .btn-ghost { @apply border border-navy/25 text-navy hover:border-copper-dark hover:text-copper-dark; }
+
+  .field {
+    @apply w-full rounded-md border border-line bg-white px-3.5 py-3 text-[15px] text-navy placeholder:text-steel/70 focus:border-copper focus:outline-none;
+  }
+
+  /* ช่องรูปที่ยังไม่มีรูป */
+  .ph {
+    background-color: #e3e8ef;
+    background-image: repeating-linear-gradient(135deg, rgb(12 35 70 / 0.06) 0 12px, transparent 12px 24px);
+  }
+  .ph-dark {
+    background-color: #15335e;
+    background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.045) 0 14px, transparent 14px 28px);
+  }
+
+  /* ===== ตัวอักษรหรู 3 มิติ: โลหะขัดเงา + ความหนา (extrude) + แสงวิ่ง + แสงฟุ้ง =====
+     ความหนาใช้ drop-shadow ซ้อนกันทีละชั้น (หน่วย em จึงพอดีทุกขนาดตัวอักษร) */
+  .text-chrome, .text-gold, .text-gold-dark, .text-navy-metal {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    background-size: 260% 100%;
+    animation: metal-shine 6s ease-in-out infinite;
+  }
+  /* ขาวโครเมียม (หัวข้อบนพื้นน้ำเงินเข้ม) */
+  .text-chrome {
+    background-image: linear-gradient(100deg,
+      #c3ccd9 0%, #ffffff 18%, #e9eef5 30%, #ffffff 40%, #ffffff 44%, #fff8ee 46%, #b9c4d4 54%, #ffffff 68%, #d3dbe6 84%, #ffffff 100%);
+    filter:
+      drop-shadow(0 0.02em 0 #a9b4c5) drop-shadow(0 0.02em 0 #8794a9) drop-shadow(0 0.02em 0 #67758d)
+      drop-shadow(0 0.02em 0 #4a5872) drop-shadow(0 0.08em 0.1em rgb(0 0 0 / 0.55))
+      drop-shadow(0 0 0.35em rgb(150 185 240 / 0.35));
+  }
+  /* ทองแดง-ทอง (ข้อความเน้นบนพื้นเข้ม) */
+  .text-gold {
+    background-image: linear-gradient(100deg,
+      #a85d2a 0%, #e9b27a 16%, #ffe2b8 30%, #fff8ec 38%, #f2c48e 46%, #c27c45 60%, #f6cf98 76%, #b86a32 100%);
+    filter:
+      drop-shadow(0 0.02em 0 #a65d2c) drop-shadow(0 0.02em 0 #8a4a22) drop-shadow(0 0.02em 0 #6d3818)
+      drop-shadow(0 0.07em 0.09em rgb(0 0 0 / 0.55)) drop-shadow(0 0 0.4em rgb(242 180 110 / 0.4));
+  }
+  /* ทองแดงเข้ม (ราคา/ตัวเลขบนพื้นขาว) */
+  .text-gold-dark {
+    background-image: linear-gradient(100deg, #7a3520 0%, #b5622f 28%, #f0b27a 42%, #c06a35 54%, #7a3520 100%);
+    filter: drop-shadow(0 0.02em 0 #e8c7a8) drop-shadow(0 0.03em 0.04em rgb(122 53 32 / 0.35));
+  }
+  /* น้ำเงินเมทัลลิก (หัวข้อบนพื้นสว่าง) */
+  .text-navy-metal {
+    background-image: linear-gradient(100deg, #061630 0%, #15335e 30%, #4f7cc0 44%, #a9c4ec 48%, #1f4275 56%, #061630 100%);
+    filter:
+      drop-shadow(0 0.02em 0 #b6c5dc) drop-shadow(0 0.02em 0 #95a8c6) drop-shadow(0 0.02em 0 #7489ad)
+      drop-shadow(0 0.07em 0.08em rgb(12 35 70 / 0.28));
+  }
+  @keyframes metal-shine {
+    0%, 100% { background-position: 100% 0; }
+    50% { background-position: 0% 0; }
+  }
+
+  /* ===== เวทีโชว์รถ: พื้นน้ำเงินเข้ม สปอตไลต์ พื้นมันวาว ===== */
+  .stage {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(60% 55% at 50% 18%, rgb(255 255 255 / 0.20), transparent 70%),
+      radial-gradient(90% 60% at 50% 100%, rgb(194 124 69 / 0.22), transparent 70%),
+      linear-gradient(180deg, #15335e 0%, #0c2346 58%, #061630 100%);
+  }
+  .stage::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 72%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(226 171 123 / 0.55), transparent);
+  }
+  .stage-car {
+    position: relative;
+    z-index: 1;
+    filter: contrast(1.06) saturate(1.08) drop-shadow(0 22px 18px rgb(0 0 0 / 0.55));
+    -webkit-box-reflect: below -8px linear-gradient(transparent 62%, rgb(255 255 255 / 0.22));
+    transition: transform 0.5s ease;
+  }
+  .group:hover .stage-car { transform: translateY(-4px) scale(1.02); }
+
+  /* ===== ภาพปกหน้าแรก ===== */
+  /* โครเมียมแท่ง: ไล่สีแนวตั้ง (สว่าง-แถบเข้มกลาง-สว่าง) + แสงวิ่งผ่าน + ความหนา 3 มิติ */
+  .text-chrome-xl {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    background-image:
+      linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.95) 48%, transparent 56%),
+      linear-gradient(180deg, #ffffff 0%, #f3f5f8 30%, #c9cfd8 46%, #6c7584 52%, #a3abb8 60%, #eef1f5 78%, #ffffff 100%);
+    background-size: 300% 100%, 100% 100%;
+    background-repeat: no-repeat;
+    animation: chrome-sweep 5.5s ease-in-out infinite;
+    filter:
+      drop-shadow(0 0.012em 0 #b9c0cc) drop-shadow(0 0.012em 0 #8f98a7) drop-shadow(0 0.012em 0 #6a7383)
+      drop-shadow(0 0.012em 0 #4b5361) drop-shadow(0 0.05em 0.06em rgb(0 0 0 / 0.75))
+      drop-shadow(0 0 0.18em rgb(255 255 255 / 0.18));
+  }
+  @keyframes chrome-sweep {
+    0% { background-position: 130% 0, 0 0; }
+    55%, 100% { background-position: -30% 0, 0 0; }
+  }
+  /* เส้นแสงแดงใต้หัวข้อ */
+  .red-streak {
+    position: relative;
+    height: 4px;
+    width: min(92%, 640px);
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent 0%, #7d0a10 6%, #e3232b 30%, #ff5a5f 46%, #ffffff 50%, #ff5a5f 54%, #e3232b 72%, #7d0a10 94%, transparent 100%);
+    box-shadow: 0 0 10px 1px rgb(255 40 48 / 0.85), 0 0 34px 6px rgb(255 30 40 / 0.45);
+  }
+  .red-streak::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 46%; height: 26px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgb(255 255 255 / 0.9), rgb(255 60 70 / 0.55) 35%, transparent 100%);
+    filter: blur(2px);
+  }
+
+  /* ฉากโชว์รูม (ใช้เมื่อยังไม่ได้ใส่รูปโชว์รูมจริง) */
+  .showroom { background: linear-gradient(180deg, #0b0d12 0%, #12151b 45%, #0a0b0f 62%, #050608 100%); }
+  .showroom > span { position: absolute; display: block; }
+  /* ไฟเส้นบนเพดาน */
+  .showroom-ceiling {
+    inset: 0 0 auto 30%; height: 16%;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.85), rgb(255 255 255 / 0.85)) 0 26% / 100% 2px no-repeat,
+      linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.55)) 0 62% / 100% 1px no-repeat,
+      linear-gradient(180deg, #16191f, #0b0d12);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 25%, #000 85%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 25%, #000 85%, transparent);
+    box-shadow: 0 10px 40px rgb(255 255 255 / 0.06);
+  }
+  /* ผนังระแนงแนวตั้ง */
+  .showroom-wall {
+    inset: 16% 0 38% 34%;
+    background:
+      radial-gradient(70% 90% at 55% 0%, rgb(255 255 255 / 0.13), transparent 70%),
+      repeating-linear-gradient(90deg, #191c22 0 14px, #0d0f13 14px 16px, #22262d 16px 17px, #15181d 17px 30px);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 20%);
+    mask-image: linear-gradient(90deg, transparent, #000 20%);
+  }
+  /* ผนังไม้มีไฟอุ่นด้านขวา */
+  .showroom-warm {
+    inset: 16% 0 38% auto; width: 16%;
+    background:
+      linear-gradient(180deg, rgb(255 196 120 / 0.55), rgb(255 170 90 / 0.08) 40%, transparent 75%) 0 0 / 100% 100% no-repeat,
+      repeating-linear-gradient(180deg, #3a2a1c 0 22px, #2c2016 22px 24px);
+    box-shadow: -20px 0 60px rgb(255 170 90 / 0.18);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%);
+    mask-image: linear-gradient(90deg, transparent, #000 40%);
+  }
+  /* พื้นขัดเงาสะท้อนแสง */
+  .showroom-floor {
+    inset: 62% 0 0 0;
+    background:
+      radial-gradient(45% 50% at 70% 0%, rgb(255 255 255 / 0.16), transparent 70%),
+      repeating-linear-gradient(90deg, transparent 0 9%, rgb(255 255 255 / 0.035) 9% 9.4%),
+      linear-gradient(180deg, #1a1d23 0%, #0d0f13 35%, #060709 100%);
+  }
+  .showroom-floor::before {
+    content: ''; position: absolute; inset: 0 0 auto 0; height: 1px;
+    background: linear-gradient(90deg, transparent 45%, rgb(255 255 255 / 0.22) 62%, rgb(255 255 255 / 0.22) 90%, transparent);
+  }
+  /* สปอตไลต์ส่องรถ + เงาใต้รถ */
+  .cover-spot {
+    position: absolute; left: 6%; right: 2%; top: -10%; bottom: 8%;
+    background: radial-gradient(50% 45% at 50% 55%, rgb(200 215 240 / 0.20), transparent 70%);
+    pointer-events: none;
+  }
+  .cover-car {
+    filter: contrast(1.05) saturate(1.05) drop-shadow(0 26px 22px rgb(0 0 0 / 0.75)) drop-shadow(0 0 40px rgb(160 190 240 / 0.12));
+    -webkit-box-reflect: below -14px linear-gradient(transparent 68%, rgb(255 255 255 / 0.2));
+  }
+  /* มือถือ: ฉากโชว์รูมอยู่หลังรถช่วงล่าง ไม่ทับข้อความ */
+  @media (max-width: 1023px) {
+    .showroom > .showroom-ceiling { display: none; }
+    .showroom-wall { inset: 56% 0 16% 0; -webkit-mask-image: linear-gradient(180deg, transparent, #000 30%); mask-image: linear-gradient(180deg, transparent, #000 30%); }
+    .showroom-warm { inset: 56% 0 16% auto; width: 20%; }
+    .showroom-floor { inset: 84% 0 0 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .text-chrome-xl { animation: none; background-position: 130% 0, 0 0; }
+  }
+}

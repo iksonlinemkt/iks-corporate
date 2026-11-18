@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# IKS Website — โหลดรูป D-MAX / MU-X Bi-Turbo จาก Google Drive → ย่อเป็น webp → ใส่สไลด์โชว์และแกลเลอรีหน้า /biturbo
+# ต้องติดตั้งเว็บ v34 ก่อน · รันซ้ำได้ (แทนที่รูปชุดเดิมจากโฟลเดอร์เดียวกัน)
+# รัน:  bash /root/ikssa_biturbo_photos.sh
+if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then echo "กรุณารันด้วย: bash ${BASH_SOURCE[0]}"; return 1 2>/dev/null || exit 1; fi
+set -euo pipefail
+MEDIA_DIR=${MEDIA_DIR:-/var/www/ikssa-media}
+SITE=$(tr -d "[:space:]" < /root/iks-web/site_url 2>/dev/null || true); SITE=${SITE:-https://isuzukrungthep.com}
+FOLDERS=(
+  "biturbo-dmax|1nRWDfLQ-qLNBgjBL7aBxJGk1HXb-KhyY|อีซูซุ ดีแมคซ์ 2.2 ไบเทอร์โบ (D-MAX Bi-Turbo)"
+  "biturbo-mux|1QqAIAeeD-nNuvedMuGFf09EL90cfXr4V|อีซูซุ มิว-เอ็กซ์ 2.2 ไบเทอร์โบ (MU-X Bi-Turbo)"
+)
+PY_IMG=python:3.12-slim
+mkdir -p /root/iks-web
+TMP=$(mktemp -d /root/iks-web/photos.XXXX); trap 'rm -rf "$TMP"' EXIT
+STAMP=$(date +%Y%m%d%H%M)
+
+docker exec iks-web-db psql -q -U iks_owner -d iks_web -tAc "select 1 from information_schema.tables where table_name = 'gallery_images'" | grep -q 1 \
+  || { echo "✖ ยังไม่มีตารางแกลเลอรี — ติดตั้งเว็บ v34 ก่อน แล้วรันสคริปต์นี้อีกครั้ง"; exit 1; }
+
+cat > "$TMP/process.mjs" <<'NODE_EOF'
+// ย่อรูปแกลเลอรีเป็น webp + เขียน SQL: node process.mjs <SRC_DIR> <MEDIA_DIR> <GROUP_KEY> <SOURCE_TAG> <ALT_PREFIX> <STAMP> <SQL_OUT>
+import { createRequire } from 'node:module';
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import path from 'node:path';
+
+const require = createRequire(process.env.SHARP_FROM ?? '/opt/ikssa-web/package.json');
+const sharp = require('sharp');
+const [SRC, MEDIA, KEY, SOURCE, ALT, STAMP, SQL_OUT] = process.argv.slice(2);
+const DIR = process.env.GALLERY_DIR ?? 'gallery/biturbo';
+// ACTIVITY_SLUG=... → ใส่รูปเป็นสไลด์ของกิจกรรม (รูปแรก = รูปปก) แทนตารางแกลเลอรี
+const ACT = process.env.ACTIVITY_SLUG;
+mkdirSync(path.join(MEDIA, DIR), { recursive: true });
+const q = (s) => (s === null || s === undefined ? 'null' : `'${String(s).replace(/'/g, "''")}'`);
+
+const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+const files = walk(SRC).filter((f) => /\.(jpe?g|jfif|jpe|png|webp|tiff?|avif|heic|heif|gif|bmp)$/i.test(f))
+  .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+
+const rows = [];
+const media = [];
+const seen = new Set();
+let n = 0;
+let dup = 0;
+for (const f of files) {
+  // ข้ามไฟล์ซ้ำ (เนื้อหาเหมือนกัน แม้ชื่อหรือโฟลเดอร์ต่างกัน)
+  const h = createHash('sha1').update(readFileSync(f)).digest('hex');
+  if (seen.has(h)) { dup++; continue; }
+  seen.add(h);
+  try {
+    const base = sharp(f, { failOn: 'none' }).rotate();
+    const num = String(n + 1).padStart(2, '0');
+    const big = `${DIR}/${KEY}-${STAMP}-${num}.webp`;
+    const small = `${DIR}/${KEY}-${STAMP}-${num}-t.webp`;
+    const a = await base.clone().resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toFile(path.join(MEDIA, big));
+    const b = await base.clone().resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true }).webp({ quality: 72 }).toFile(path.join(MEDIA, small));
+    n++;
+    const alt = `${ALT} รูปที่ ${n}`;
+    rows.push(`(${q(KEY)}, ${q(big)}, ${q(small)}, ${q(alt)}, ${a.width}, ${a.height}, ${q(SOURCE)}, ${n * 10})`);
+    media.push(`(${q(big)}, ${q(path.basename(f).slice(0, 200))}, 'image/webp', ${statSync(path.join(MEDIA, big)).size}, ${a.width}, ${a.height}, ${q(alt)})`);
+    console.log(`  ✔ ${path.basename(f)} → ${a.width}×${a.height} (${Math.round(statSync(path.join(MEDIA, big)).size / 1024)} KB) · ย่อ ${b.width}×${b.height}`);
+  } catch (e) {
+    console.log(`  ! ข้าม ${path.basename(f)}: ${e.message.split('\n')[0]}`);
+  }
+}
+const out = ['set client_min_messages = warning;', 'begin;'];
+if (ACT) {
+  const imgs = rows.map((r) => r.match(/^\('[^']*', '([^']*)'/)[1]);
+  if (imgs.length) {
+    out.push(`insert into public.activities (slug, title, summary, cover_image, gallery, status, sort_order)
+values (${q(ACT)}, ${q(process.env.ACTIVITY_TITLE ?? ALT)}, ${q(process.env.ACTIVITY_SUMMARY ?? null)}, ${q(imgs[0])}, ${q(JSON.stringify(imgs.slice(1)))}::jsonb, 'published', 0)
+on conflict (slug) do update set cover_image = excluded.cover_image, gallery = excluded.gallery;`);
+  }
+} else {
+  out.push(`delete from public.gallery_images where source = ${q(SOURCE)};`);
+  if (rows.length) out.push(`insert into public.gallery_images (group_key, image, thumb, alt, width, height, source, sort_order) values\n  ${rows.join(',\n  ')};`);
+}
+if (media.length) {
+  out.push(`insert into public.media_files (path, original_name, mime_type, size_bytes, width, height, alt_text) values\n  ${media.join(',\n  ')}\non conflict (path) do update set size_bytes = excluded.size_bytes, width = excluded.width, height = excluded.height, alt_text = excluded.alt_text;`);
+}
+out.push('commit;');
+writeFileSync(SQL_OUT, out.join('\n') + '\n');
+console.log(`รวม ${n} รูป${dup ? ` (ข้ามรูปซ้ำ ${dup} ไฟล์)` : ''}`);
+NODE_EOF
+
+echo "▶ เตรียมตัวโหลดไฟล์จาก Google Drive (ครั้งแรก 1-2 นาที)…"
+docker pull -q "$PY_IMG" >/dev/null
+TOTAL=0
+for row in "${FOLDERS[@]}"; do
+  IFS='|' read -r KEY ID ALT <<<"$row"
+  echo; echo "▶ $ALT"
+  mkdir -p "$TMP/$KEY"
+  # โหลดจาก Drive (ลองซ้ำได้ 3 รอบ เผื่อ Google จำกัดการโหลดชั่วคราว · --continue = ข้ามไฟล์ที่ได้แล้ว)
+  for TRY in 1 2; do
+    docker run --rm -v "$TMP":/w "$PY_IMG" sh -c \
+      "pip install -q --disable-pip-version-check --root-user-action=ignore gdown >/dev/null 2>&1 && gdown --folder --continue 'https://drive.google.com/drive/folders/$ID' -O '/w/$KEY'" \
+      > "$TMP/$KEY.log" 2>&1 || true
+    GOT=$(find "$TMP/$KEY" -type f -size +1k 2>/dev/null | wc -l)
+    LISTED=$(grep -c '^- ' "$TMP/$KEY.log" || true)
+    if [ "$LISTED" -gt 0 ]; then echo "  รอบ $TRY: ได้ $GOT จาก $LISTED ไฟล์"; else echo "  รอบ $TRY: ได้ $GOT ไฟล์"; fi
+    if [ "$GOT" -gt 0 ] && { [ "$LISTED" -eq 0 ] || [ "$GOT" -ge "$LISTED" ]; }; then break; fi
+    [ "$TRY" -lt 2 ] && { echo "  รอ 20 วินาทีแล้วลองใหม่…"; sleep 20; }
+  done
+  # สำรอง: gdown เห็นรายชื่อไฟล์แต่โหลดไม่ได้ → โหลดทีละไฟล์ตรงจาก Google Drive ด้วยรหัสไฟล์
+  if grep -q '^Processing file ' "$TMP/$KEY.log"; then
+    NEED=0; OK=0
+    while read -r _ _ FID FNAME; do
+      [ -n "$FID" ] || continue
+      FNAME=$(basename "$FNAME"); OUTF="$TMP/$KEY/$FNAME"
+      [ -s "$OUTF" ] && continue
+      find "$TMP/$KEY" -type f -name "$FNAME" -size +1k | grep -q . && continue
+      NEED=$((NEED + 1))
+      if curl -fsSL --retry 2 -m 120 -o "$OUTF" "https://drive.usercontent.google.com/download?id=$FID&export=download&confirm=t" \
+         && ! head -c 400 "$OUTF" | grep -qi '<html\|<!doctype'; then OK=$((OK + 1)); else rm -f "$OUTF"; fi
+    done < <(grep '^Processing file ' "$TMP/$KEY.log")
+    if [ "$NEED" -gt 0 ]; then
+      echo "  โหลดตรงทีละไฟล์: ได้เพิ่ม $OK จาก $NEED ไฟล์"
+      [ "$OK" -lt "$NEED" ] && echo "  ! บางไฟล์ยังโหลดไม่ได้ — ใน Google Drive เลือกรูปทั้งหมดในโฟลเดอร์ → แชร์ → \"ทุกคนที่มีลิงก์\" แล้วรันใหม่"
+      GOT=$(find "$TMP/$KEY" -type f -size +1k 2>/dev/null | wc -l)
+    fi
+  fi
+  if [ "$GOT" -eq 0 ]; then
+    echo "  ── ข้อความจาก Google Drive ──"; grep -v '^- ' "$TMP/$KEY.log" | grep -Ev '%\|' | tail -25 | sed 's/^/  /'
+  fi
+  CNT=$(find "$TMP/$KEY" -type f | grep -Eic '\.(jpe?g|jfif|jpe|png|webp|tiff?|avif|heic|heif|gif|bmp)$' || true)
+  if [ "$CNT" -eq 0 ]; then
+    ALLF=$(find "$TMP/$KEY" -type f | wc -l)
+    echo "✖ ไม่พบไฟล์รูปในโฟลเดอร์ (ได้ไฟล์อื่น $ALLF ไฟล์)"
+    find "$TMP/$KEY" -type f | sed "s|$TMP/$KEY/|    · |" | head -20
+    echo "  ตรวจว่าแชร์โฟลเดอร์เป็น \"ทุกคนที่มีลิงก์ (Anyone with the link)\" และในโฟลเดอร์เป็นไฟล์รูป (JPG/PNG) แล้วรันใหม่"
+    continue
+  fi
+  echo "  ได้ $CNT ไฟล์ · กำลังย่อรูป…"
+  find "$TMP/$KEY" -type f -name '*.*' -exec chmod 644 {} +
+  SHARP_FROM=/opt/ikssa-web/package.json node "$TMP/process.mjs" "$TMP/$KEY" "$MEDIA_DIR" "$KEY" "drive:$ID" "$ALT" "$STAMP" "$TMP/$KEY.sql"
+  docker exec -i iks-web-db psql -q -U iks_owner -d iks_web -v ON_ERROR_STOP=1 < "$TMP/$KEY.sql"
+  # ลบไฟล์รูปชุดเก่าของโฟลเดอร์นี้ (รอบก่อน)
+  find "$MEDIA_DIR/gallery/biturbo" -maxdepth 1 -name "$KEY-*.webp" ! -name "$KEY-$STAMP-*" -delete 2>/dev/null || true
+  TOTAL=$((TOTAL + CNT))
+done
+chmod 755 "$MEDIA_DIR/gallery" "$MEDIA_DIR/gallery/biturbo" 2>/dev/null || true
+chmod 644 "$MEDIA_DIR"/gallery/biturbo/*.webp 2>/dev/null || true
+
+if [ "$TOTAL" -eq 0 ]; then echo; echo "✖ ยังไม่ได้รูปเลย — ดูข้อความด้านบน"; exit 1; fi
+echo
+docker exec iks-web-db psql -q -U iks_owner -d iks_web -c "select group_key as ชุดรูป, count(*) as จำนวนรูป from public.gallery_images group by 1 order by 1"
+echo "✔ เสร็จแล้ว — ดูได้ที่ $SITE/biturbo"
+echo "  จัดลำดับ / ซ่อนรูป / แก้คำอธิบาย: $SITE/admin/c/gallery"

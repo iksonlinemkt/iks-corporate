@@ -1,0 +1,5 @@
+node_modules/
+.next/
+.env*
+*.tsbuildinfo
+ikssa_web_v*.sh
