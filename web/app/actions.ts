@@ -47,7 +47,7 @@ export async function submitLead(_prev: LeadState, fd: FormData): Promise<LeadSt
 
   const leadType = (TYPES as readonly string[]).includes(str(fd, 'lead_type')) ? str(fd, 'lead_type') : 'contact';
   const fullName = str(fd, 'full_name', 100);
-  // เบอร์โทร: เก็บเฉพาะตัวเลข ต้องขึ้นต้นด้วย 0 และครบ 10 หลัก (เช่น 0812345678)
+  // เบอร์โทร: เก็บเฉพาะตัวเลข · มือถือ 10 หลัก (06/08/09) หรือเบอร์บ้าน 9 หลัก (02–07)
   const phone = str(fd, 'phone', 30).replace(/\D/g, '');
   // LINE ID (ไม่บังคับ): ตัวอักษรอังกฤษ ตัวเลข . _ - และ @ นำหน้าได้
   const lineId = str(fd, 'line_id', 60).replace(/\s+/g, '');
@@ -57,7 +57,7 @@ export async function submitLead(_prev: LeadState, fd: FormData): Promise<LeadSt
 
   const errors: LeadState['errors'] = {};
   if (fullName.length < 2) errors.full_name = 'กรุณากรอกชื่อ-นามสกุล';
-  if (!/^0\d{9}$/.test(phone)) errors.phone = 'เบอร์โทรต้องขึ้นต้นด้วย 0 และมี 10 หลัก เช่น 0812345678';
+  if (!/^(0[689]\d{8}|0[2-7]\d{7})$/.test(phone)) errors.phone = 'เบอร์ไม่ถูกต้อง: มือถือ 10 หลัก เช่น 0812345678 หรือเบอร์บ้าน 9 หลัก เช่น 021234567';
   if (lineId && !/^@?[A-Za-z0-9._-]{2,50}$/.test(lineId)) errors.line_id = 'LINE ID ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข และ . _ - (มี @ นำหน้าได้)';
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.email = 'รูปแบบอีเมลไม่ถูกต้อง';
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.preferred_date = 'รูปแบบวันที่ไม่ถูกต้อง';

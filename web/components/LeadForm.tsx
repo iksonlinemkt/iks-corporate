@@ -97,12 +97,12 @@ export function LeadForm({
       <div>
         <label htmlFor="phone" className={label}>เบอร์โทรศัพท์ <span className="text-red">*</span></label>
         <input id="phone" name="phone" type="tel" inputMode="numeric" autoComplete="tel-national" required className="field" defaultValue={val('phone')}
-          maxLength={10} pattern="0[0-9]{9}" placeholder="0812345678"
+          maxLength={10} pattern="0[0-9]{8,9}" placeholder="0812345678"
           onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/\D/g, '').slice(0, 10); }}
           aria-invalid={!!err('phone')} aria-describedby={err('phone') ? 'e-phone' : 'h-phone'} />
         {err('phone')
           ? <p id="e-phone" className={errCls}>{err('phone')}</p>
-          : <p id="h-phone" className={`mt-1 text-[13px] ${dark ? 'text-white/60' : 'text-steel'}`}>ขึ้นต้นด้วย 0 ครบ 10 หลัก</p>}
+          : <p id="h-phone" className={`mt-1 text-[13px] ${dark ? 'text-white/60' : 'text-steel'}`}>มือถือ 10 หลัก หรือเบอร์บ้าน 9 หลัก (ขึ้นต้นด้วย 0)</p>}
       </div>
       <div className="sm:col-span-2">
         <div className="sm:w-[calc(50%-0.5rem)]">
