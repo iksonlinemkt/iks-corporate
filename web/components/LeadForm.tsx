@@ -96,9 +96,21 @@ export function LeadForm({
       </div>
       <div>
         <label htmlFor="phone" className={label}>เบอร์โทรศัพท์ <span className="text-red">*</span></label>
-        <input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" required className="field" defaultValue={val('phone')}
-          aria-invalid={!!err('phone')} aria-describedby={err('phone') ? 'e-phone' : undefined} />
-        {err('phone') && <p id="e-phone" className={errCls}>{err('phone')}</p>}
+        <input id="phone" name="phone" type="tel" inputMode="numeric" autoComplete="tel-national" required className="field" defaultValue={val('phone')}
+          maxLength={10} pattern="0[0-9]{9}" placeholder="0812345678"
+          onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/\D/g, '').slice(0, 10); }}
+          aria-invalid={!!err('phone')} aria-describedby={err('phone') ? 'e-phone' : 'h-phone'} />
+        {err('phone')
+          ? <p id="e-phone" className={errCls}>{err('phone')}</p>
+          : <p id="h-phone" className={`mt-1 text-[13px] ${dark ? 'text-white/60' : 'text-steel'}`}>ขึ้นต้นด้วย 0 ครบ 10 หลัก</p>}
+      </div>
+      <div className="sm:col-span-2">
+        <div className="sm:w-[calc(50%-0.5rem)]">
+          <label htmlFor="line_id" className={label}>LINE ID <span className={`font-normal ${dark ? 'text-white/60' : 'text-steel'}`}>(ไม่บังคับ · ใช้ติดต่อกลับเมื่อโทรไม่สะดวก)</span></label>
+          <input id="line_id" name="line_id" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={50} className="field" defaultValue={val('line_id')}
+            placeholder="เช่น somchai123" aria-invalid={!!err('line_id')} aria-describedby={err('line_id') ? 'e-line' : undefined} />
+          {err('line_id') && <p id="e-line" className={errCls}>{err('line_id')}</p>}
+        </div>
       </div>
 
       {interests.length > 0 && (

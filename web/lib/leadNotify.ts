@@ -14,7 +14,7 @@ export const LEAD_LABEL: Record<string, string> = {
 const ICON: Record<string, string> = { quote: '📄', test_drive: '🚗', service_booking: '🔧', contact: '💬', commercial: '🚚', launch: '✨' };
 
 export type LeadInput = {
-  lead_type: string; full_name: string; phone: string; email?: string | null;
+  lead_type: string; full_name: string; phone: string; line_id?: string | null; email?: string | null;
   branch_id?: string | null; vehicle_id?: string | null; service_type?: string | null;
   preferred_date?: string | null; preferred_time?: string | null; message?: string | null;
   source_page?: string | null; utm?: Record<string, string> | null;
@@ -43,6 +43,7 @@ export function leadText(lead: LeadInput, branchName?: string, vehicleName?: str
     `${ICON[lead.lead_type] ?? '📩'} ลูกค้าใหม่ · ${LEAD_LABEL[lead.lead_type] ?? lead.lead_type}`,
     `ชื่อ: ${lead.full_name}`,
     `โทร: ${lead.phone}`,
+    lead.line_id && `LINE ID: ${lead.line_id}`,
     lead.email && `อีเมล: ${lead.email}`,
     vehicleName && `รุ่น: ${vehicleName}`,
     lead.service_type && `บริการ: ${lead.service_type}`,
@@ -93,7 +94,7 @@ export async function notifyLead(lead: LeadInput, opts: { force?: boolean } = {}
     try {
       await post(hook, {
         event: 'lead.created', lead_type: lead.lead_type, lead_label: LEAD_LABEL[lead.lead_type] ?? lead.lead_type,
-        full_name: lead.full_name, phone: lead.phone, email: lead.email ?? null,
+        full_name: lead.full_name, phone: lead.phone, line_id: lead.line_id ?? null, email: lead.email ?? null,
         vehicle: vehicle?.name ?? null, branch_code: branch?.code ?? null, branch_name: branch?.name ?? null,
         line_group: group ?? null, service_type: lead.service_type ?? null,
         preferred_date: lead.preferred_date ?? null, preferred_time: lead.preferred_time ?? null,

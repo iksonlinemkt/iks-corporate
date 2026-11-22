@@ -17,13 +17,13 @@ export async function GET(req: NextRequest) {
   if (!(await currentUser())) return new NextResponse('ต้องเข้าสู่ระบบ', { status: 401 });
   const f = cleanFilter(Object.fromEntries(req.nextUrl.searchParams));
   const { rows } = await queryLeads(f, 20000, 0);
-  const head = ['วันที่', 'เวลา', 'ประเภท', 'สถานะ', 'ชื่อ', 'เบอร์โทร', 'อีเมล', 'รุ่นรถ', 'สาขา', 'บริการ', 'วันที่สะดวก', 'เวลาที่สะดวก', 'ข้อความ', 'บันทึก', 'มาจากหน้า', 'แคมเปญ', 'PDPA'];
+  const head = ['วันที่', 'เวลา', 'ประเภท', 'สถานะ', 'ชื่อ', 'เบอร์โทร', 'LINE ID', 'อีเมล', 'รุ่นรถ', 'สาขา', 'บริการ', 'วันที่สะดวก', 'เวลาที่สะดวก', 'ข้อความ', 'บันทึก', 'มาจากหน้า', 'แคมเปญ', 'PDPA'];
   const lines = rows.map((l) => {
     const d = new Date(l.created_at);
     return [
       d.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
       d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' }),
-      LEAD_TYPES[l.lead_type] ?? l.lead_type, LEAD_STATUS[l.status] ?? l.status, l.full_name, l.phone, l.email,
+      LEAD_TYPES[l.lead_type] ?? l.lead_type, LEAD_STATUS[l.status] ?? l.status, l.full_name, l.phone, l.line_id, l.email,
       l.vehicle_name, l.branch_name, l.service_type, l.preferred_date, l.preferred_time, l.message, l.note, l.source_page,
       l.utm ? Object.entries(l.utm).map(([k, v]) => `${k}=${v}`).join('; ') : '', l.consent_text_version,
     ].map(cell).join(',');

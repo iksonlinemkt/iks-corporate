@@ -21,7 +21,7 @@ export async function queryLeads(f: LeadFilter, limit = 50, offset = 0) {
   const add = (sql: string, v: unknown) => { args.push(v); where.push(sql.replace('?', `$${args.length}`)); };
   if (f.status) add('l.status = ?', f.status);
   if (f.type) add('l.lead_type = ?', f.type);
-  if (f.q) add("(l.full_name ilike ? or l.phone ilike $X or coalesce(l.email,'') ilike $X)".replace(/\$X/g, `$${args.length + 1}`), `%${f.q}%`);
+  if (f.q) add("(l.full_name ilike ? or l.phone ilike $X or coalesce(l.line_id,'') ilike $X or coalesce(l.email,'') ilike $X)".replace(/\$X/g, `$${args.length + 1}`), `%${f.q}%`);
   if (f.from) add("l.created_at >= (?::date)::timestamp at time zone 'Asia/Bangkok'", f.from);
   if (f.to) add("l.created_at < ((?::date) + 1)::timestamp at time zone 'Asia/Bangkok'", f.to);
   const w = where.length ? `where ${where.join(' and ')}` : '';

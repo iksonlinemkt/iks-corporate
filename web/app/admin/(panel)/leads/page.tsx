@@ -67,11 +67,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   <span className={`rounded px-2 py-0.5 text-[12px] font-semibold ${l.status === 'new' ? 'bg-copper text-navy-950' : 'bg-mist text-steel'}`}>{LEAD_STATUS[l.status]}</span>
                   <span className="font-display text-[16px] font-bold">{l.full_name}</span>
                   <a href={`tel:${l.phone}`} className="inline-flex items-center gap-1 text-[15px] font-semibold text-copper-dark"><Phone size={15} />{l.phone}</a>
+                  {l.line_id && <span className="text-[14px] font-semibold text-[#06c755]">LINE: {l.line_id}</span>}
                   <span className="text-[14px] text-steel">{LEAD_TYPES[l.lead_type]}{l.vehicle_name ? ` · ${l.vehicle_name}` : ''}{l.branch_name ? ` · ${l.branch_name}` : ''}</span>
                   <span className="ml-auto text-[13px] text-steel">{fmt(l.created_at)}</span>
                 </summary>
                 <div className="grid gap-5 border-t border-line px-4 py-4 lg:grid-cols-[1fr_1fr]">
                   <dl className="grid grid-cols-[120px_1fr] gap-x-3 gap-y-1.5 text-[14px]">
+                    {l.line_id && <><dt className="text-steel">LINE ID</dt><dd className="font-semibold">{l.line_id}</dd></>}
                     {l.email && <><dt className="text-steel">อีเมล</dt><dd>{l.email}</dd></>}
                     {l.service_type && <><dt className="text-steel">บริการ</dt><dd>{l.service_type}</dd></>}
                     {(l.preferred_date || l.preferred_time) && <><dt className="text-steel">วันเวลาที่สะดวก</dt><dd>{l.preferred_date ?? ''} {l.preferred_time ?? ''}</dd></>}
