@@ -38,7 +38,7 @@ export function Header({ promo }: { promo?: Promo | null }) {
   return (
     <>
       <header className="sticky top-0 z-40 bg-navy-950 text-white shadow-[0_6px_20px_-12px_rgb(0_0_0/0.6)]">
-        <div className="container-x flex h-[64px] items-center justify-between gap-4 2xl:h-[78px]">
+        <div className="container-x flex h-[64px] items-center justify-between gap-4 2xl:h-[78px] 2xl:max-w-[1680px] 2xl:px-8">
           <Link href="/" aria-label="อีซูซุกรุงเทพเซลส์ หน้าหลัก" className="shrink-0"><Wordmark light className="h-10 2xl:h-12" /></Link>
 
           <nav aria-label="เมนูหลัก" className="hidden 2xl:block">
@@ -64,6 +64,9 @@ export function Header({ promo }: { promo?: Promo | null }) {
           <div className="flex items-center gap-2">
             <Link href="/test-drive" className="btn btn-ghost-light hidden min-h-[42px] whitespace-nowrap px-4 md:inline-flex 2xl:hidden min-[1700px]:inline-flex">ทดลองขับ</Link>
             <Link href="/contact?type=quote" className="btn btn-primary hidden min-h-[42px] whitespace-nowrap px-4 sm:inline-flex">ขอใบเสนอราคา</Link>
+            {/* โลโก้ ISUZU (ตัวแทนจำหน่ายอย่างเป็นทางการ) · ขอบขาวบางอยู่ในไฟล์ SVG */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/isuzu-logo.svg" alt="ISUZU" width={784} height={149} className="ml-1 h-5 w-auto shrink-0 md:h-6 2xl:ml-2 2xl:h-[26px]" />
             <button
               type="button"
               className="flex h-11 w-11 items-center justify-center rounded-md text-white hover:bg-white/10 2xl:hidden"
