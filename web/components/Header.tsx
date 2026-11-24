@@ -66,7 +66,7 @@ export function Header({ promo }: { promo?: Promo | null }) {
             <Link href="/contact?type=quote" className="btn btn-primary hidden min-h-[42px] whitespace-nowrap px-4 sm:inline-flex">ขอใบเสนอราคา</Link>
             {/* โลโก้ ISUZU (ตัวแทนจำหน่ายอย่างเป็นทางการ) · ขอบขาวบางอยู่ในไฟล์ SVG */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/isuzu-logo.svg" alt="ISUZU" width={784} height={149} className="ml-1 h-5 w-auto shrink-0 md:h-6 2xl:ml-2 2xl:h-[26px]" />
+            <img src="/brand/isuzu-logo.svg" alt="ISUZU" width={748} height={142} className="ml-1 h-5 w-auto shrink-0 md:h-6 2xl:ml-2 2xl:h-[26px]" />
             <button
               type="button"
               className="flex h-11 w-11 items-center justify-center rounded-md text-white hover:bg-white/10 2xl:hidden"
