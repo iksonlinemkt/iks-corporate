@@ -2,12 +2,23 @@ import type { MetadataRoute } from 'next';
 import { publicDb } from '@/lib/db';
 import { SITE_URL } from '@/lib/site';
 import { branchPath } from '@/lib/branch';
+import { campaignPhase, getCampaign, getSettings } from '@/lib/content';
 
 export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL;
-  const pages = ['/', '/models', '/commercial', '/promotions', '/activities', '/happy-whale', '/about', '/contact', '/test-drive', '/live', '/my-member', '/why', '/biturbo', '/community'];
+  // /live ไม่อยู่ใน sitemap เมื่อไม่มีแคมเปญ หรือไลฟ์จบแล้วและหน้านี้ส่งต่อไปเมนู NEW (ดู live/page.tsx)
+  let liveOff = false;
+  try {
+    const [c, s] = await Promise.all([getCampaign(), getSettings()]);
+    const next = s.nav_new_url?.trim();
+    liveOff = !c || (campaignPhase(c) === 'ended' && !!next?.startsWith('/') && !next.startsWith('/live'));
+  } catch {
+    /* ฐานข้อมูลไม่พร้อม: คง /live ไว้ */
+  }
+  const pages = ['/', '/models', '/commercial', '/promotions', '/activities', '/happy-whale', '/about', '/contact', '/test-drive', '/live', '/my-member', '/why', '/biturbo', '/community']
+    .filter((p) => !(p === '/live' && liveOff));
   let models: { slug: string; updated_at: Date }[] = [];
   let branches: { code: string; updated_at: Date }[] = [];
   let upfits: { slug: string; updated_at: Date }[] = [];

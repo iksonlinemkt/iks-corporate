@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Gift } from 'lucide-react';
 import { LeadForm } from '@/components/LeadForm';
 import { LaunchSpotlight } from '@/components/LaunchSpotlight';
@@ -10,6 +10,7 @@ import { getReviewData } from '@/lib/reviews';
 import { pageMetadata } from '@/lib/page';
 import { lineHref, mediaUrl } from '@/lib/format';
 import { SITE_URL } from '@/lib/site';
+import { getLiveTest } from '@/lib/preview';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,10 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
   const [c, settings, branches, reviews] = await Promise.all([getCampaign(), getSettings(), getBranches(), getReviewData()]);
   if (!c) notFound();
   const phase = campaignPhase(c);
+  // ไลฟ์จบแล้ว + ตั้งเมนู NEW ไว้ (เช่น /biturbo): คนที่เข้า /live (รวมจาก Google) ไปหน้ารุ่นใหม่แทน
+  // แคมเปญถัดไป (ยังไม่เริ่ม/กำลังไลฟ์) หน้านี้กลับมาใช้ได้เอง · ทีมที่กำลังทดสอบลิงก์ไลฟ์ยังเห็นหน้านี้
+  const nextUrl = settings.nav_new_url?.trim();
+  if (phase === 'ended' && nextUrl?.startsWith('/') && !nextUrl.startsWith('/live') && !(await getLiveTest())) redirect(nextUrl);
   const src = sp.utm_source ?? SOURCES[(sp.src ?? '').toLowerCase()] ?? (sp.src ? sp.src.slice(0, 40) : undefined);
   const utm = { ...(src ? { utm_source: src } : {}), utm_campaign: c.slug, ...(sp.utm_medium ? { utm_medium: sp.utm_medium.slice(0, 40) } : {}) };
   const formTitle = phase === 'live' ? 'สนใจรุ่นใหม่? ฝากข้อมูลไว้ ทีมงานโทรกลับทันที'
